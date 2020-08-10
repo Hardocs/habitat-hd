@@ -1,0 +1,17 @@
+{
+  "name": "hardocs-identity",
+  "version": "0.1.0",
+  "description": "provide identity services as second proxy after authentication",
+  "main": "server.ts",
+  "scripts": {
+    "tsc": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Narration SD",
+  "license": "ISC",
+  "dependencies": {
+    "@types/express": "^4.17.7",
+    "express": "^4.17.1",
+    "typescript": "^3.9.7"
+  }
+}
