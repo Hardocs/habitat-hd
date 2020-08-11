@@ -1,10 +1,11 @@
 import express = require ('express')
 // import * as express from 'express';
+// also this - do we have use for the extra three? leave the ide warning in commit to remind
 import { createProxyMiddleware, Filter, Options, RequestHandler } from 'http-proxy-middleware';
 
 const app = express()
 const listenPort:number = 5983 // distinguish from 5984 so we can talk to it...
-const proxyDestination = 'http://127.0.0.1:5984'
+const proxyDestination:string = 'http://127.0.0.1:5984'
 
 // the REs look a little funny, so that empty queries will act
 // sensibly regardless of trailing slash presence or not
