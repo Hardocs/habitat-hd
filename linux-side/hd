@@ -6,7 +6,7 @@ server {
     set $oauth2_proxy 127.0.0.1:4180;
 
     # location ~ ^/oauth2/(.*)$ {
-    # location ~ ^/oauth2/ {
+    location ~ ^/oauth2/ {
     # location ~ ^/hardocs/ {
         add_header Set-Cookie "lool=whatathing2";
         add_header Access-Control-Allow-Origin "*";
@@ -22,8 +22,8 @@ server {
         add_header X-request-uri "$request_uri";
         # if we can proxy_set_header X-Auth-Request-Redirect /_up;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Auth-CouchDB-Roles _admin,admin,users,blogger;
-        proxy_set_header X-Auth-CouchDB-UserName admin-hard;
+        proxy_set_header X-Auth-CouchDB-Roles users;
+        proxy_set_header X-Auth-CouchDB-UserName hardlab-gm;
         proxy_set_header X-Auth-CouchDB-Token "be55d146bea2f6d2f7c597b67210e337";
         auth_request_set $user   $upstream_http_x_auth_request_user;
         auth_request_set $email  $upstream_http_x_auth_request_email;
