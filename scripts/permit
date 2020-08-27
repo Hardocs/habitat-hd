@@ -1,0 +1,12 @@
+curl -u admin:4redwood -X PUT $db/monkeys/_security -d @- << EOF
+{
+    "admins": {
+        "names": [],
+        "roles": []
+    },
+    "members": {
+        "names": ["hardlab-gm"],
+        "roles": []
+    }
+}
+EOF
