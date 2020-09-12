@@ -12,17 +12,21 @@ app.use('/hard-api', async (req, res, next) => {
 
   console.log ('req url:' + JSON.stringify(req.url))
   // console.log ('req headers:' + JSON.stringify(req.headers))
-  console.log('req email: ' + req.headers['x-forwarded-email'])
 
   // later we look these up in db, separate connection
   const reqEmail = req.headers['x-forwarded-email']
+  console.log('req email: ' + reqEmail)
+
   let dbId = ''
   let dbRoles = 'users'
   let authType = 'proxy'
 
   switch (reqEmail) {
     case'narrationsd@gmail.com':
-      dbId = 'admin-hard'
+      // *todo* revert this as soon as can properly log in Electron browser
+      // dbId = 'admin'
+      dbId = 'hardlab-gm'
+      // dbId = 'admin-hard'
       dbRoles = 'admins'
       // authType = 'basic' // see note for later
       break
@@ -42,7 +46,7 @@ app.use('/hard-api', async (req, res, next) => {
     req.headers['x-auth-couchdb-username'] = dbId
     req.headers['x-auth-couchdb-roles'] = dbRoles
 
-    // temporary - later an env, matching couchdb/etc/local.ini value
+    // *todo* - later an env, matching couchdb/etc/local.ini value
     const secret = 'be55d146bea2f6d2f7c597b67210e337'
 
     // as required by Couch
