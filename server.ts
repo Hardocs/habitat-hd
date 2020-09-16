@@ -23,12 +23,12 @@ app.use('/hard-api', async (req, res, next) => {
 
   switch (reqEmail) {
     case'narrationsd@gmail.com':
-      // *todo* revert this as soon as can properly log in Electron browser
-      // dbId = 'admin'
-      dbId = 'hardlab-gm'
-      // dbId = 'admin-hard'
+      dbId = 'admin'
+      dbRoles = '_admin'
+      break
+    case 'narreshen@gmail.com':
+      dbId = 'hardlab-ad'
       dbRoles = 'admins'
-      // authType = 'basic' // see note for later
       break
     case 'narrishin@gmail.com':
       dbId = 'hardlab-gm'
