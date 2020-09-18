@@ -13,3 +13,5 @@ EOF
 
  curl localhost:5984/monkeys/_all_docs  -u admin:4redwood
 
+ curl $dbs/hardocs-projects/_all_docs?include_docs=true
+
