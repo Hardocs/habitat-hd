@@ -19,7 +19,7 @@ curl -X PUT $dbs/hardocs-projects
 }
 
 # all docs
- curl $dbs/hardocs-projects/_all_docs?include_docs=true
+curl $dbs/hardocs-projects/_all_docs?include_docs=true
 
 # all by view
 curl $dbs/hardocs-projects/_design/projects/_view/owner-projects/?include_docs=true
@@ -29,4 +29,4 @@ curl "$dbs/hardocs-projects/_design/projects/_view/owner-projects?key=%22narresh
 curl "$dbs/hardocs-projects/_design/projects/_view/owner-projects?include_docs=true&key=%22narreshen%22"
 
 # a single project, with our second view
- curl "$dbs/hardocs-projects/_design/projects/_view/owner-project?key=%22narreshen:proj-2%22&wut=wow&include_docs=true"
+curl "$dbs/hardocs-projects/_design/projects/_view/owner-project?key=%22narreshen:proj-2%22&wut=wow&include_docs=true"
