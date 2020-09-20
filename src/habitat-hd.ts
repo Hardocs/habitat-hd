@@ -91,7 +91,6 @@ app.use('/hard-api', createProxyMiddleware({
   changeOrigin: true
 }));
 
-app.listen(listenPort,
-    () => {
-      console.log('Habitat-hd (Gator) listening on port ' + listenPort + '!')
-    })
+app.listen(listenPort, () => {
+  console.log('Habitat-hd (Gator) listening on port ' + listenPort + '!')
+})

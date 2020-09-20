@@ -2,7 +2,7 @@
 # then create the hardocs projects database
 curl -X PUT $dbs/hardocs-projects
 
-# create design doc withh two view
+# create design doc with two view
 
 {
   "_id": "_design/projects",
@@ -30,3 +30,13 @@ curl "$dbs/hardocs-projects/_design/projects/_view/owner-projects?include_docs=t
 
 # a single project, with our second view
 curl "$dbs/hardocs-projects/_design/projects/_view/owner-project?key=%22narreshen:proj-2%22&wut=wow&include_docs=true"
+
+# and now also create the publicly searchable database, which will contain
+# all and only public projects via replication
+curl -X PUT $dbs/hardocs-public
+curl $dbs/hardocs-public/_all_docs?include_docs=true
+
+# how to compact
+curl -u admin-hard:4admin-hard -H "Content-Type: application/json" -X POST  http://localhost:5984/hard-begin/_compact
+{"ok":true}
+
