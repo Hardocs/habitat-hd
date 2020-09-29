@@ -1,11 +1,10 @@
 {
   "name": "habitat-hd",
   "version": "0.3.0",
-  "description": "provide identity services as second proxy after authentication",
+  "description": "provide habitat services as second proxy/app chain after authentication",
   "main": "src/habitat-hd.ts",
   "scripts": {
     "build": "tsc",
-    "tsc": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Narration SD",

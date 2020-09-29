@@ -8,6 +8,8 @@ const app = express()
 const listenPort:number = 5983 // distinguish from 5984 so we can talk to it...
 let proxyDestination:string = 'http://localhost:5984'
 
+// app.use(express.json()); //Used to parse JSON bodies
+
 app.use('/hard-api', async (req, res, next) => {
 
   console.log ('req url:' + JSON.stringify(req.url))
@@ -47,6 +49,9 @@ app.use('/hard-api', async (req, res, next) => {
     req.headers['x-auth-couchdb-roles'] = dbRoles
 
     // *todo* - later an env, matching couchdb/etc/local.ini value
+    // this is the client secret from the Google login setup, to verify it's real
+    // meaning we'll have to externalize handlers at this point, selecting
+    // according to which one has been used - should be in headers
     const secret = 'be55d146bea2f6d2f7c597b67210e337'
 
     // as required by Couch
@@ -80,6 +85,24 @@ app.use('/hard-api', async (req, res, next) => {
   // console.log ('checking req headers:' + JSON.stringify(req.headers))
   next()
 });
+
+// here is where we pick off any commands we'll answer ourselves
+
+app.use('/hard-api', async (req, res, next) => {
+  console.log('current req.url: ' + req.url)
+  console.log('current req.body: ' + req.body)
+  if (req.url.includes('habitat-request')) {
+    const reqParts = req.url.split('/')
+    console.log ('habitat request url is: ' + JSON.stringify(req.url))
+    // res.type('text/plain');
+    // res.send('i am a beautiful butterfly');
+    res.send('my parts are: ' + JSON.stringify(reqParts))
+    return res.sendStatus(200)
+  } else {
+    next()
+  }
+});
+
 
 // the REs look a little funny, so that empty queries will act
 // sensibly regardless of trailing slash presence or not
