@@ -8,8 +8,6 @@ const app = express()
 const listenPort:number = 5983 // distinguish from 5984 so we can talk to it...
 let proxyDestination:string = 'http://localhost:5984'
 
-// app.use(express.json()); //Used to parse JSON bodies
-
 app.use('/hard-api', async (req, res, next) => {
 
   console.log ('req url:' + JSON.stringify(req.url))
@@ -58,19 +56,19 @@ app.use('/hard-api', async (req, res, next) => {
     const hmac = crypto.createHmac('sha1', secret)
     hmac.update(dbId)
     const token:string = hmac.digest('hex')
-
     console.log('token is: ' + token)
     req.headers["x-auth-couchdb-token"] = token
-  }
-  else {  // *todo* this didn't work - can't bypass our friend, apparently. But later, change the proxy request w/name:pw?
 
-    const authString:string = 'admin-hard:4redwood' // *todo* obviously another env
-    const basicAuth:string = new Buffer(authString).toString('base64')
-
-    req.headers['Authorization'] = 'Basic ' + basicAuth
-    req.headers['x-auth-couchdb-username'] = dbId
-    req.headers['x-auth-couchdb-roles'] = dbRoles
   }
+  // else {  // *todo* this didn't work - can't bypass our friend, apparently. But later, change the proxy request w/name:pw?
+  //
+  //   const authString:string = 'admin-hard:4redwood' // *todo* obviously another env
+  //   const basicAuth:string = new Buffer(authString).toString('base64')
+  //
+  //   req.headers['Authorization'] = 'Basic ' + basicAuth
+  //   req.headers['x-auth-couchdb-username'] = dbId
+  //   req.headers['x-auth-couchdb-roles'] = dbRoles
+  // }
   next()
 });
 
@@ -78,6 +76,7 @@ app.use('/hard-api', async (req, res, next) => {
 app.use('/hard-api', async (req, res, next) => {
 
   console.log ('checking req url:' + JSON.stringify(req.url))
+  console.log ('checking req url raw:' + req.url)
   console.log ('checking req id:' + JSON.stringify(req.headers['x-auth-couchdb-username']))
   console.log ('checking req token:' + JSON.stringify(req.headers["x-auth-couchdb-token"]))
   console.log ('checking req roles:' + JSON.stringify(req.headers["x-auth-couchdb-roles"]))
@@ -87,17 +86,26 @@ app.use('/hard-api', async (req, res, next) => {
 });
 
 // here is where we pick off any commands we'll answer ourselves
+// first, pull the body out, only in the case of habitat-request
+app.use('/hard-api/habitat-request', express.json()); //Used to parse JSON bodies
 
 app.use('/hard-api', async (req, res, next) => {
-  console.log('current req.url: ' + req.url)
-  console.log('current req.body: ' + req.body)
+  console.log('current req.url raw: ' + req.url)
+  console.log('current req.url: ' + JSON.stringify(req.url))
+  console.log('current req.body raw: ' + req.body)
+  console.log('current req.body: ' + JSON.stringify(req.body))
   if (req.url.includes('habitat-request')) {
+    console.log  ('we\'re commanding')
     const reqParts = req.url.split('/')
-    console.log ('habitat request url is: ' + JSON.stringify(req.url))
-    // res.type('text/plain');
-    // res.send('i am a beautiful butterfly');
-    res.send('my parts are: ' + JSON.stringify(reqParts))
-    return res.sendStatus(200)
+    console.log ('habitat request parts are: ' + JSON.stringify(reqParts))
+    if (req.body.json) {
+      res.type('application/json');
+      return res.send({ ok: true, msg: 'i am a beautiful butterfly'});
+    } else {
+      res.type('text/plain');
+      return res.send('i am a beautiful butterfly');
+    }
+    // res.sendStatus(200) // *todo* don't do this - look into where we might or the like, also respond to such
   } else {
     next()
   }
