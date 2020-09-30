@@ -3,6 +3,8 @@ import express = require ('express')
 import crypto from 'crypto'
 // also this - do we have use for the extra three? leave the ide warning in commit to remindnp
 import { createProxyMiddleware, Filter, Options, RequestHandler } from 'http-proxy-middleware';
+// import PouchDb from 'pouchdb'
+import {safeEnv, createOwnersDb} from "./modules/habitat-hd-cloud";
 
 const app = express()
 const listenPort:number = 5983 // distinguish from 5984 so we can talk to it...
@@ -92,12 +94,24 @@ app.use('/hard-api/habitat-request', express.json()); //Used to parse JSON bodie
 app.use('/hard-api', async (req, res, next) => {
   console.log('current req.url raw: ' + req.url)
   console.log('current req.url: ' + JSON.stringify(req.url))
+  console.log('current req.orignalUrl: ' + JSON.stringify(req.originalUrl))
   console.log('current req.body raw: ' + req.body)
   console.log('current req.body: ' + JSON.stringify(req.body))
-  if (req.url.includes('habitat-request')) {
-    console.log  ('we\'re commanding')
+  if (req.originalUrl.includes('habitat-request')) {
+    console.log  ('we\'re commanding: ' + JSON.stringify(req.headers))
     const reqParts = req.url.split('/')
+
+    const agent:any = req.headers['x-forwarded-email']
+    const owner:string = 'ggl/' + agent
+    createOwnersDb(owner, agent)
+        .then (result => {
+          console.log ('createOwner: ' + JSON.stringify(result))
+        })
+        .catch(err => {
+          console.log('createOwner:error: ' + err)
+        })
     console.log ('habitat request parts are: ' + JSON.stringify(reqParts))
+
     if (req.body.json) {
       res.type('application/json');
       return res.send({ ok: true, msg: 'i am a beautiful butterfly'});
