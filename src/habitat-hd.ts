@@ -103,7 +103,7 @@ app.use('/hard-api', async (req, res, next) => {
 
     const agent:any = req.headers['x-forwarded-email']
     const owner:string = 'ggl/' + agent
-    createOwnersDb(owner, agent)
+    createOwnersDb(owner, agent, req)
         .then (result => {
           console.log ('createOwner: ' + JSON.stringify(result))
         })
