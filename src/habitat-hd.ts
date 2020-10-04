@@ -1,10 +1,14 @@
 import express = require ('express')
 // import * as express from 'express';
 import crypto from 'crypto'
-// also this - do we have use for the extra three? leave the ide warning in commit to remindnp
-import { createProxyMiddleware, Filter, Options, RequestHandler } from 'http-proxy-middleware';
-// import PouchDb from 'pouchdb'
-import {safeEnv, createOwnersDb} from "./modules/habitat-hd-cloud";
+// *todo* also this - do we have use for the extra three? leave the ide warning in commit to remindnp
+import { createProxyMiddleware/*, Filter, Options, RequestHandler*/ } from 'http-proxy-middleware';
+import {
+  discoveryOwners,
+  initializeHabitat
+} from "./modules/habitat-hd-cloud";
+
+// *todo* lorra lorra tsignore - type them, probably many anys too
 
 const app = express()
 const listenPort:number = 5983 // distinguish from 5984 so we can talk to it...
@@ -94,36 +98,34 @@ app.use('/hard-api/habitat-request', express.json()); //Used to parse JSON bodie
 app.use('/hard-api', async (req, res, next) => {
   console.log('current req.url raw: ' + req.url)
   console.log('current req.url: ' + JSON.stringify(req.url))
-  console.log('current req.orignalUrl: ' + JSON.stringify(req.originalUrl))
+  console.log('current req.originalUrl: ' + JSON.stringify(req.originalUrl))
   console.log('current req.body raw: ' + req.body)
   console.log('current req.body: ' + JSON.stringify(req.body))
   if (req.originalUrl.includes('habitat-request')) {
-    console.log  ('we\'re commanding: ' + JSON.stringify(req.headers))
+    // console.log  ('we\'re commanding: ' + JSON.stringify(req.headers))
     const reqParts = req.url.split('/')
-
     const agent:any = req.headers['x-forwarded-email']
-    const owner:string = 'ggl/' + agent
-    createOwnersDb(owner, agent, req)
-        .then (result => {
-          console.log ('createOwner: ' + JSON.stringify(result))
-        })
-        .catch(err => {
-          console.log('createOwner:error: ' + err)
-        })
-    console.log ('habitat request parts are: ' + JSON.stringify(reqParts))
+    const body:object = req.body
 
-    if (req.body.json) {
-      res.type('application/json');
-      return res.send({ ok: true, msg: 'i am a beautiful butterfly'});
-    } else {
-      res.type('text/plain');
-      return res.send('i am a beautiful butterfly');
+// @ts-ignore
+    switch(body.cmd) {
+      case 'initializeHabitat':
+        return initializeHabitat(agent, req, res)
+        break
+
+      case 'discovery':
+        return discoveryOwners (agent, req, reqParts, res);
+        break
+
+      default:
+        // @ts-ignore
+        console.log('MISSING: No Habit command for: ' + body.cmd)
+        break
     }
-    // res.sendStatus(200) // *todo* don't do this - look into where we might or the like, also respond to such
   } else {
     next()
   }
-});
+})
 
 
 // the REs look a little funny, so that empty queries will act
