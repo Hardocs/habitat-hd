@@ -211,8 +211,8 @@ const authedPouchDb = (dbPath:string, authHeaders:object, options:object = {}):D
     return new PouchDB(dbPath, options)
 }
 
-const initializeHabitat = async (admin: string, authHeaders:object, req: any, res: any) => {
-    console.log('go initializeHabitat, with super: '+ safeEnv(process.env.SUPERADMIN, null))
+const initializeHabitat = async (admin: string, authHeaders: object, req: any, res: any) => {
+    console.log('go initializeHabitat...')
     const superAdmin: string | null = safeEnv(process.env.SUPERADMIN, null)
     const controlDbName: string = 'http://localhost:5984/habitat-populus'
     const controlDbOpts: object = {}
@@ -227,7 +227,7 @@ const initializeHabitat = async (admin: string, authHeaders:object, req: any, re
     // *todo* actually, refactor this out, pass in various opts and settings, use universally
     // here also, inclusive of the initial check, which also may be sharable?
     let controlDb = authedPouchDb(controlDbName, authHeaders, {skip_setup: true})
-    let cmdResult:any = await controlDb.info()
+    let cmdResult: any = await controlDb.info()
       .then(result => {
           // @ts-ignore
           if (!(result.error && result.error === 'not_found')) {
@@ -240,19 +240,76 @@ const initializeHabitat = async (admin: string, authHeaders:object, req: any, re
       })
       .then(async (result) => {
           console.log('presence check result: ' + JSON.stringify(result))
-          console.log('building: '+ controlDbName + ', opts: ' + JSON.stringify(controlDbOpts))
+          console.log('building: ' + controlDbName + ', opts: ' + JSON.stringify(controlDbOpts))
           // controlDb = new PouchDB(controlDbName/*, controlDbOpts*/)
           controlDb = authedPouchDb(controlDbName, authHeaders)
           return await controlDb.info()
       })
+      .then((result: object) => {
+          console.log('newDb ownership: node fetch read _security: ' + JSON.stringify(result))
+          // console.log ('newDb ownership: get _security: ' + JSON.stringify(result))
+          const secOpts = { // this one only super-admin may change
+              admins: {
+                  "names": [],
+                  "roles": []
+              },
+              members: {
+                  "names": ['puddentain-yes-no'],
+                  "roles": ['never_any_role']
+              }
+          }
+          console.log('now setting _security, via ' + JSON.stringify(secOpts))
+
+          // this and the next can't use controlDb.put(secOpts), as pouchDb itself
+          // blocks requests like _security _id and _design/doc even for _admin,
+          // so we organize fetch in another way for it
+
+          const couchPath: string = controlDbName + '/_security'
+          return fetch(couchPath, {
+              method: 'PUT',
+              headers: authHeaders,
+              body: JSON.stringify(secOpts)
+          }) // .text()
+      })
+      .then(result => result.json()) // json from the promise
       .then(result => {
-          // we won't have any docs, though may want to check some  of the other setup
-          //*todo* here is where we would have additional thens, to create the
-          // all-important _security and _design/documents
-          console.log('controlDb info: ' + JSON.stringify(result))
-          return {ok: true, msg: 'Ok, ' + result.db_name + ' is initiated'}
+          const msg = controlDbName + ' resulting _security: ' + JSON.stringify(result)
+          console.log(msg)
+          if(!result.ok) {
+              throw new Error('setting failed: ' + msg)
+          }
+
+          console.log('now let\'s do _design/documents')
+          const desOpts: object = {
+              language: 'javascript',
+              views: {
+                  "owner-assorted": {
+                      "map": "function (doc) {\n  if (doc)\n  emit(doc.name, 1);\n}"
+                  },
+                  "owner-projects": {
+                      "map": "function (doc) {\n  if (doc)\n  emit(doc.name, 1);\n}"
+                  },
+              }
+          }
+
+          const couchPath: string = controlDbName + '/_design/owner-projects'
+          return fetch(couchPath, {
+              method: 'PUT',
+              headers: authHeaders,
+              body: JSON.stringify(desOpts)
+          })
+      })
+      .then(result => result.json()) // json from the promise
+      .then(result => {
+          const msg = controlDbName + ' _design docs: ' + JSON.stringify(result)
+          console.log(msg)
+          if(!result.ok) {
+              throw new Error('setting failed: ' + msg)
+          }
+          return {ok: true, msg: 'Ok, ' + controlDbName + ' is initiated'}
       })
       .catch(err => {
+          console.log('initializeHabitat:error: ' + JSON.stringify(err))
           const msg: string = 'initializeHabitat:error: ' +
             (err.message // thrown Errors
               ? err.message

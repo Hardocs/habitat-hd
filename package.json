@@ -4,10 +4,10 @@
   "description": "provide habitat services as second proxy/app chain after authentication",
   "main": "src/habitat-hd.ts",
   "scripts": {
-    "dev": "tsc",
-    "build": "tsc",
-    "udev": "tsc -outDir dist",
-    "ubuild": "tsc -outDir dist",
+    "dev": "npm run build",
+    "build": "run-script-os",
+    "build:windows": "tsc",
+    "build:nix": "tsc -outDir dist",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Narration SD",
@@ -18,7 +18,8 @@
     "hmacsha1": "^1.0.0",
     "http-proxy-middleware": "^1.0.5",
     "node-fetch": "^2.6.1",
-    "pouchdb": "^7.2.2"
+    "pouchdb": "^7.2.2",
+    "run-script-os": "^1.1.1"
   },
   "devDependencies": {
     "@types/express": "^4.17.8",
