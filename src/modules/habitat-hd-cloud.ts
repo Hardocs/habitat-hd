@@ -1,13 +1,13 @@
-import PouchDb from 'pouchdb'
+import PouchDB from 'pouchdb'
+import Database = PouchDB.Database;
+// import * as PouchDB from 'pouchdb'
 // @ts-ignorex
 // import Security from 'pouchdb-security'
 // const Security = require('pouchdb-security')
 const fetch = require('node-fetch')
-// @ts-ignorex
-// import { fetch } from 'pouchdb-fetch/lib/index-browser.es'
 // good _old_ Node
-require('dotenv').config()
-console.log('process.env: ' + JSON.stringify(process.env))
+require('dotenv').config({ path: __dirname + '/../../.env' }) // root of website where you expect it
+// console.log('process.env: ' + JSON.stringify(process.env))
 
 const safeEnv = (value: string | undefined, preset: string | null) => { // don't use words like default...
 
@@ -26,7 +26,7 @@ const createOwnersDb = (owner: string, agent: string, req: object) => {
         }
     }
     console.log('begin create')
-    const ownerDb = new PouchDb(dbName, createOpts)
+    const ownerDb = new PouchDB(dbName, createOpts)
     console.log('get Info')
     return ownerDb.info()
       // .then ((result:object) => {
@@ -196,38 +196,53 @@ const discoveryOwners = (agent: any, req:any, reqParts: string[], res:any) => {
 
 // *todo* this is where it starts getting real...above discovery will be used, then out.
 
-const initializeHabitat = async (admin: string, req: any, res: any) => {
-    console.log('go initializeHabitat')
-    const superAdmin: string | null = 'narrationsd@gmail.com' // *todo* !! safeEnv(process.env.SUPERADMIN, null)
+// this is how we get our auth keys into PouchDB, as we open a database
+const authedPouchDb = (dbPath:string, authHeaders:object, options:object = {}):Database => {
+    options = Object.assign(options,
+      {
+        fetch: function (url:string, opts:object) {
+            Object.keys(authHeaders).forEach(key => {
+                // @ts-ignore for the headers -- *todo* opts needs a more specific type
+                opts.headers.set(key, authHeaders[key])
+            })
+            return PouchDB.fetch(url, opts)
+        }
+    })
+    return new PouchDB(dbPath, options)
+}
+
+const initializeHabitat = async (admin: string, authHeaders:object, req: any, res: any) => {
+    console.log('go initializeHabitat, with super: '+ safeEnv(process.env.SUPERADMIN, null))
+    const superAdmin: string | null = safeEnv(process.env.SUPERADMIN, null)
     const controlDbName: string = 'http://localhost:5984/habitat-populus'
     const controlDbOpts: object = {}
-    let controlDb = null
 
-    if (admin !== superAdmin) {
-        const msg = 'initiation not permitted for ' + admin
-        console.log(msg + ', super is: ' + superAdmin)
-        return {ok: false, msg: msg}
+    if (admin !== superAdmin) { // there can be only one -- Highlander
+        const msg = 'Initiation not permitted for ' + admin
+        console.log(msg)
+        res.type('application/json');
+        return res.send({ok: false, msg: msg});
     }
 
     // *todo* actually, refactor this out, pass in various opts and settings, use universally
     // here also, inclusive of the initial check, which also may be sharable?
-    controlDb = new PouchDb(controlDbName, {skip_setup: true})
-
-    let cmdResult:any = await  controlDb.info()
+    let controlDb = authedPouchDb(controlDbName, authHeaders, {skip_setup: true})
+    let cmdResult:any = await controlDb.info()
       .then(result => {
           // @ts-ignore
-          if (result.ok) {
-              throw new Error(controlDbName + ' already exists!')
+          if (!(result.error && result.error === 'not_found')) {
+              const msg = controlDbName + ' already exists! Habitat has been initialized, ' +
+                'and has data you don\'t likely want to lose, thank you...'
+              console.log(msg)
+              throw new Error(msg)
           }
           return result
-      })
-      .catch(err => {
-          return err
       })
       .then(async (result) => {
           console.log('presence check result: ' + JSON.stringify(result))
           console.log('building: '+ controlDbName + ', opts: ' + JSON.stringify(controlDbOpts))
-          controlDb = new PouchDb(controlDbName/*, controlDbOpts*/)
+          // controlDb = new PouchDB(controlDbName/*, controlDbOpts*/)
+          controlDb = authedPouchDb(controlDbName, authHeaders)
           return await controlDb.info()
       })
       .then(result => {
@@ -238,35 +253,14 @@ const initializeHabitat = async (admin: string, req: any, res: any) => {
           return {ok: true, msg: 'Ok, ' + result.db_name + ' is initiated'}
       })
       .catch(err => {
-          const msg:string = 'initializeHabitat:error: ' + JSON.stringify(err)
-          console.log(msg)
-          // res.send( /*JSON.stringify(*/{ok: false, msg: msg}/*)*/)
-          // return /*JSON.stringify(*/{ok: false, msg: msg}/*)*/
-          // return /*JSON.stringify(*/{ok: false, msg: msg}/*)*/
-          // cmdResult = /*JSON.stringify(*/{ok: false, msg: msg}/*)*/
-          const errResult = /*JSON.stringify(*/{ok: false, msg: msg}/*)*/
-          // if (req.body.json) {
-          //     res.type('application/json');
-          //     return res.send(errResult);
-          // } else {
-          //     res.type('text/plain');
-          //     return res.send(JSON.stringify(errResult));
-          // }
-          console.log('errResult: ' + JSON.stringify(errResult))
+          const msg: string = 'initializeHabitat:error: ' +
+            (err.message // thrown Errors
+              ? err.message
+              : JSON.stringify(err))
+          const errResult = {ok: false, msg: msg}
+          // console.log('errResult: ' + JSON.stringify(errResult))
           return errResult
       })
-      // .then(result => {
-      //     return result
-      // })
-      //
-      //     if (req.body.json) {
-      //         res.type('application/json');
-      //         return res.send(result);
-      //     } else {
-      //         res.type('text/plain');
-      //         return res.send('i am a beautiful butterfly');
-      //     }
-      // })
 
     console.log('cmdResult: ' + JSON.stringify(cmdResult))
 

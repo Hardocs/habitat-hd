@@ -106,11 +106,23 @@ app.use('/hard-api', async (req, res, next) => {
     const reqParts = req.url.split('/')
     const agent:any = req.headers['x-forwarded-email']
     const body:object = req.body
+    // @ts-ignore
+    const authHeaders:object = {
+      // @ts-ignore
+      "x-auth-couchdb-username": req.headers["x-auth-couchdb-username"],
+      // "X-Auth-CouchDB-Username": req.headers["x-auth-couchdb-username"],
+      // @ts-ignore
+      "x-auth-couchdb-roles": req.headers["x-auth-couchdb-roles"],
+      // "X-Auth-CouchDB-Roles": req.headers["x-auth-couchdb-roles"],
+      // @ts-ignore
+      "x-auth-couchdb-token": req.headers["x-auth-couchdb-token"]
+      // "X-Auth-CouchDB-Token": req.headers["x-auth-couchdb-token"]
+    }
 
 // @ts-ignore
     switch(body.cmd) {
       case 'initializeHabitat':
-        return initializeHabitat(agent, req, res)
+        return initializeHabitat(agent, authHeaders, req, res)
         break
 
       case 'discovery':
