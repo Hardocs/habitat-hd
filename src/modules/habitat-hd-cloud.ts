@@ -212,7 +212,52 @@ const authedPouchDb = (dbPath: string, authHeaders: object, options: object = {}
   return new PouchDB(dbPath, options)
 }
 
-const initializeHabitat = async (admin: string, authHeaders: object, req: any, res: any) => {
+const initializeHabitat = async (
+  admin: string, authHeaders: object, req: any, res: any) => {
+    // this strategy is kind of deliberately simpleminded, at least at present.
+    // if you fail an initialize, you may or not want to remove the dbs built.
+    //
+    // you wouldn't, if the fail came from trying initialize on a working system...!!
+    //
+    // in theory this is protected against on the client, but let's be safe,
+    // thus this is as it is.
+    //
+    // Fail, and you want to analyze before making a move.
+    // deletion should be done on choice, and as provided and protected in the Fauxton.
+
+    const initResult = await initializePopulus(admin, authHeaders, req, res)
+      .then (result => {
+          if (!result.ok) {
+              throw result
+          }
+          return result
+      })
+      .then (() => {
+        return initializeOwners(admin, authHeaders, req, res)
+      })
+      .then (result => {
+        if (!result.ok) { // this is a little redundant, but foretells other methods
+            throw result
+        }
+        return { ok: true, msg: 'Ok, Habitat is initialized, with both Populus and Owners databases...'}
+      })
+      .catch (err => {
+          console.log('initializeHabitat:error: ' + JSON.stringify(err))
+          return err
+      })
+
+    // could abstract this out, as it really should be in the return mechanism
+    // for any habitat command. In which case we'd just return our result here
+    if (req.body.json) {
+        res.type('application/json');
+        return res.send(initResult);
+    } else {
+        res.type('text/plain');
+        return res.send(JSON.stringify(initResult));
+    }
+}
+
+const initializePopulus = async (admin: string, authHeaders: object, req: any, res: any) => {
   const controlDbName: string = 'http://localhost:5984/habitat-populus'
   const dbOpts = {}
 
@@ -239,7 +284,7 @@ const initializeHabitat = async (admin: string, authHeaders: object, req: any, r
     }
   }
 
-  await initializeDb(controlDbName, dbOpts, admin, secOpts, devOpts, authHeaders, req, res)
+  return initializeDb(controlDbName, dbOpts, admin, secOpts, devOpts, authHeaders, req, res)
 }
 
 const initializeOwners = async (admin: string, authHeaders: object, req: any, res: any) => {
@@ -269,7 +314,7 @@ const initializeOwners = async (admin: string, authHeaders: object, req: any, re
     }
   }
 
-  await initializeDb(controlDbName, dbOpts, admin, secOpts, devOpts, authHeaders, req, res)
+  return initializeDb(controlDbName, dbOpts, admin, secOpts, devOpts, authHeaders, req, res)
 }
 
 const initializeDb = async (
@@ -357,8 +402,8 @@ const initializeDb = async (
       .catch(err => {
         console.log('initializeDb:' + targetDbName + ':error: ' + JSON.stringify(err))
         const msg: string = 'initializeDb:' + targetDbName + ':error: ' +
-          (err.message // thrown Errors
-            ? err.message
+          (err.message
+            ? err.message // thrown Errors
             : JSON.stringify(err))
         const errResult = {ok: false, msg: msg}
         // console.log('errResult: ' + JSON.stringify(errResult))
@@ -366,14 +411,7 @@ const initializeDb = async (
       })
 
   console.log('cmdResult: ' + JSON.stringify(cmdResult))
-
-  if (req.body.json) {
-    res.type('application/json');
-    return res.send(cmdResult);
-  } else {
-    res.type('text/plain');
-    return res.send(JSON.stringify(cmdResult));
-  }
+  return cmdResult
 }
 
 export {
