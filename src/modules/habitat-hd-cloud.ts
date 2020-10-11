@@ -169,7 +169,7 @@ const createOwnersDb = (owner: string, agent: string, req: object) => {
 }
 
 
-const discoveryOwners = (agent: any, req: any, reqParts: string[], res: any) => {
+const discoveryOwners = (agent: string, authHeaders: object, req: any, res: any) => {
   console.log('go discoveryOwners')
 
   const owner: string = 'ggl/' + agent
@@ -181,7 +181,6 @@ const discoveryOwners = (agent: any, req: any, reqParts: string[], res: any) => 
     .catch(err => {
       console.log('createOwner:error: ' + err)
     })
-  console.log('habitat request parts are: ' + JSON.stringify(reqParts))
 
   if (req.body.json) {
     res.type('application/json');

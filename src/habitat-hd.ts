@@ -126,7 +126,7 @@ app.use('/hard-api', async (req, res, next) => {
         break
 
       case 'discovery':
-        return discoveryOwners (agent, req, reqParts, res);
+        return discoveryOwners (agent, authHeaders, req, res);
         break
 
       default:
