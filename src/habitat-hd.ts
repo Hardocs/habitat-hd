@@ -5,7 +5,9 @@ import crypto from 'crypto'
 import { createProxyMiddleware/*, Filter, Options, RequestHandler*/ } from 'http-proxy-middleware';
 import {
   discoveryOwners,
-  initializeHabitat
+  getLoginIdentity,
+  initializeHabitat,
+  safeEnv
 } from "./modules/habitat-hd-cloud";
 
 // *todo* lorra lorra tsignore - type them, probably many anys too
@@ -13,6 +15,9 @@ import {
 const app = express()
 const listenPort:number = 5983 // distinguish from 5984 so we can talk to it...
 let proxyDestination:string = 'http://localhost:5984'
+
+const superAdmin:string = <string>safeEnv(process.env.SUPERADMIN, 'none')
+const googleClientSecret:string = <string>safeEnv(process.env.GOOGLE_CLIENT_SECRET, 'none')
 
 app.use('/hard-api', async (req, res, next) => {
 
@@ -23,29 +28,23 @@ app.use('/hard-api', async (req, res, next) => {
   const reqEmail = req.headers['x-forwarded-email']
   console.log('req email: ' + reqEmail)
 
-  let dbId = ''
+
+  // much simplified what is to happen here: no more admins role, only _admin superAdmin, and users
+  // and, identity will be simply the full email address, throughout
+  const dbId = <string> (reqEmail ? reqEmail : 'no-email')
   let dbRoles = 'users'
   let authType = 'proxy'
 
   switch (reqEmail) {
-    case'narrationsd@gmail.com':
-      dbId = 'admin'
+    case superAdmin:
       dbRoles = '_admin'
       break
-    case 'narreshen@gmail.com':
-      dbId = 'hardlab-ad'
-      dbRoles = 'admins'
-      break
-    case 'narrishin@gmail.com':
-      dbId = 'hardlab-gm'
+    default: // all others, and has consequences in habitat as well as db
       dbRoles = 'users'
       break
-    default:
-      console.log('bad destination: ' + reqEmail)
-      dbId = 'not-permitted'
   }
 
-  console.log('req id is: ' + dbId)
+  console.log('identity is: ' + dbId + ', roles: ' + dbRoles)
 
   if (authType === 'proxy') {
     // here's the key
@@ -55,27 +54,14 @@ app.use('/hard-api', async (req, res, next) => {
     // *todo* - later an env, matching couchdb/etc/local.ini value
     // this is the client secret from the Google login setup, to verify it's real
     // meaning we'll have to externalize handlers at this point, selecting
-    // according to which one has been used - should be in headers
-    const secret = 'be55d146bea2f6d2f7c597b67210e337'
-
-    // as required by Couch
-    const hmac = crypto.createHmac('sha1', secret)
+    // according to which one has been used - should be in headers, as required by Couch
+    const hmac = crypto.createHmac('sha1', googleClientSecret)
     hmac.update(dbId)
     const token:string = hmac.digest('hex')
     console.log('token is: ' + token)
     req.headers["x-auth-couchdb-token"] = token
-
   }
-  // else {  // *todo* this didn't work - can't bypass our friend, apparently. But later, change the proxy request w/name:pw?
-  //
-  //   const authString:string = 'admin-hard:4redwood' // *todo* obviously another env
-  //   const basicAuth:string = new Buffer(authString).toString('base64')
-  //
-  //   req.headers['Authorization'] = 'Basic ' + basicAuth
-  //   req.headers['x-auth-couchdb-username'] = dbId
-  //   req.headers['x-auth-couchdb-roles'] = dbRoles
-  // }
-  next()
+  next ()
 });
 
 // this one will go out later, or in some way use a debug key,  because that's what it is
@@ -119,10 +105,18 @@ app.use('/hard-api', async (req, res, next) => {
       // "X-Auth-CouchDB-Token": req.headers["x-auth-couchdb-token"]
     }
 
-// @ts-ignore
-    switch(body.cmd) {
+    interface Command {
+      cmd:string
+      // other things if/when we need
+    }
+
+    switch((<Command>body).cmd) {
       case 'initializeHabitat':
         return initializeHabitat(agent, authHeaders, req, res)
+        break
+
+      case 'getLoginIdentity':
+        return getLoginIdentity (agent, authHeaders, req, res);
         break
 
       case 'discovery':

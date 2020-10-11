@@ -1,5 +1,5 @@
 import PouchDB from 'pouchdb'
-import Database = PouchDB.Database;
+import Database = PouchDB.Database
 // import * as PouchDB from 'pouchdb'
 // @ts-ignorex
 // import Security from 'pouchdb-security'
@@ -14,6 +14,20 @@ const safeEnv = (value: string | undefined, preset: string | null) => { // don't
   return typeof value !== 'undefined' && value
     ? value
     : preset
+}
+
+// *todo* starting here, lots of opportunity for refactoring out commons
+const getLoginIdentity= (agent: string, authHeaders: object, req: any, res: any) => {
+
+  const identity = { ok: true, identity: agent }
+
+  if (req.body.json) {
+    res.type('application/json')
+    return res.send(identity)
+  } else {
+    res.type('text/plain')
+    return res.send(JSON.stringify(identity))
+  }
 }
 
 const createOwnersDb = (owner: string, agent: string, req: object) => {
@@ -183,11 +197,11 @@ const discoveryOwners = (agent: string, authHeaders: object, req: any, res: any)
     })
 
   if (req.body.json) {
-    res.type('application/json');
-    return res.send({ok: true, msg: 'i am a beautiful butterfly'});
+    res.type('application/json')
+    return res.send({ok: true, msg: 'i am a beautiful butterfly'})
   } else {
-    res.type('text/plain');
-    return res.send('i am a beautiful butterfly');
+    res.type('text/plain')
+    return res.send('i am a beautiful butterfly')
   }
   // res.sendStatus(200) // *todo* don't do this - look into where we might or the like, also respond to such
 }
@@ -248,11 +262,11 @@ const initializeHabitat = async (
     // could abstract this out, as it really should be in the return mechanism
     // for any habitat command. In which case we'd just return our result here
     if (req.body.json) {
-        res.type('application/json');
-        return res.send(initResult);
+        res.type('application/json')
+        return res.send(initResult)
     } else {
-        res.type('text/plain');
-        return res.send(JSON.stringify(initResult));
+        res.type('text/plain')
+        return res.send(JSON.stringify(initResult))
     }
 }
 
@@ -333,8 +347,8 @@ const initializeDb = async (
   if (admin !== superAdmin) { // there can be only one -- Highlander
     const msg = 'Initiation not permitted for ' + admin
     console.log(msg)
-    res.type('application/json');
-    return res.send({ok: false, msg: msg});
+    res.type('application/json')
+    return res.send({ok: false, msg: msg})
   }
 
   let targetDb = authedPouchDb(targetDbName, authHeaders, {skip_setup: true})
@@ -417,5 +431,6 @@ export {
   safeEnv,
   discoveryOwners,
   initializeHabitat,
+  getLoginIdentity,
   initializeOwners
 }
