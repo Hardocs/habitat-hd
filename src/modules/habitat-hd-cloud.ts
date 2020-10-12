@@ -238,7 +238,7 @@ const initializeHabitat = async (
     // Fail, and you want to analyze before making a move.
     // deletion should be done on choice, and as provided and protected in the Fauxton.
 
-    const initResult = await initializePopulus(admin, authHeaders, req, res)
+    const initResult = await initializeIdentities(admin, authHeaders, req, res)
       .then (result => {
           if (!result.ok) {
               throw result
@@ -246,13 +246,13 @@ const initializeHabitat = async (
           return result
       })
       .then (() => {
-        return initializeOwners(admin, authHeaders, req, res)
+        return initializePublic(admin, authHeaders, req, res)
       })
       .then (result => {
         if (!result.ok) { // this is a little redundant, but foretells other methods
             throw result
         }
-        return { ok: true, msg: 'Ok, Habitat is initialized, with both Populus and Owners databases...'}
+        return { ok: true, msg: 'Ok, Habitat is initialized, with both Identities and Public databases...'}
       })
       .catch (err => {
           console.log('initializeHabitat:error: ' + JSON.stringify(err))
@@ -270,52 +270,58 @@ const initializeHabitat = async (
     }
 }
 
-const initializePopulus = async (admin: string, authHeaders: object, req: any, res: any) => {
-  const controlDbName: string = 'http://localhost:5984/habitat-populus'
+const setMembership = async (
+  // members:string, addOrDelete:boolean, locationName:string,
+  cmd:Command,
+  admin: string, authHeaders: object, req: any, res: any
+) => {
+  const locationDbName: string = 'http://localhost:5984/' + cmd.locationName
   const dbOpts = {}
 
-  const secOpts = { // this one only super-admin may change
+  // *todo* actually read first, then modify....
+  const secOpts = { // *todo* for now, access is only via _admin
     admins: {
-      "names": [],
-      "roles": []
+      "names": ['no-identity'],
+      "roles": ['never_any_role']
     },
     members: {
-      "names": ['puddentain-yes-no'],
+      "names": ['no-identity'],
       "roles": ['never_any_role']
     }
   }
 
-  const devOpts: object = {
-    language: 'javascript',
-    views: {
-      "owner-assorted": {
-        "map": "function (doc) {\n  if (doc)\n  emit(doc.name, 1);\n}"
-      },
-      "owner-projects": {
-        "map": "function (doc) {\n  if (doc)\n  emit(doc.name, 1);\n}"
-      },
-    }
-  }
-
-  return initializeDb(controlDbName, dbOpts, admin, secOpts, devOpts, authHeaders, req, res)
+  return setLocationSecurity(locationDbName, dbOpts, admin, secOpts, authHeaders, req, res)
 }
 
-const initializeOwners = async (admin: string, authHeaders: object, req: any, res: any) => {
-  const controlDbName: string = 'http://localhost:5984/habitat-owners'
+const setLocationSecurity = async (
+  locationName: string, targetDbOpts: object,
+  admin: string, secOpts: object,
+  authHeaders: object, req: any, res: any
+) => {
+  const locationDbName: string = 'http://localhost:5984/' + locationName
+
+  return Promise.reject ({ ok: false, msg: 'Setting security of locations not implemented yet'})
+}
+
+const createLocation = async (
+  cmd:Command,
+  admin: string, authHeaders: object, req: any, res: any
+) => {
+  const locationDbName: string = 'http://localhost:5984/' + cmd.locationName
   const dbOpts = {}
 
-  const secOpts = { // this one only super-admin may change
+  const secOpts = { // access is only via _admin
     admins: {
-      "names": [],
-      "roles": []
+      "names": ['no-identity'],
+      "roles": ['never_any_role']
     },
     members: {
-      "names": ['puddentain-yes-no'],
+      "names": ['no-identity'],
       "roles": ['never_any_role']
     }
   }
 
-  const devOpts: object = {
+  const devOpts: object = { // *todo* dummies; need to be worked out
     language: 'javascript',
     views: {
       "owner-assorted": {
@@ -327,20 +333,81 @@ const initializeOwners = async (admin: string, authHeaders: object, req: any, re
     }
   }
 
-  return initializeDb(controlDbName, dbOpts, admin, secOpts, devOpts, authHeaders, req, res)
+  return initializeDb(locationDbName, dbOpts, admin, secOpts, devOpts, authHeaders, req, res)
+}
+
+const initializeIdentities = async (
+  admin: string, authHeaders: object,
+  req: any, res: any
+) => {
+  const identitiesDbName: string = 'http://localhost:5984/habitat-identities'
+  const dbOpts = {}
+
+  const secOpts = { // access is only via _admin
+    admins: {
+      "names": ['no-identity'],
+      "roles": ['never_any_role']
+    },
+    members: {
+      "names": ['no-identity'],
+      "roles": ['never_any_role']
+    }
+  }
+
+  const devOpts: object = { // *todo* dummies; need to be worked out
+    language: 'javascript',
+    views: {
+      "owner-assorted": {
+        "map": "function (doc) {\n  if (doc)\n  emit(doc.name, 1);\n}"
+      },
+      "owner-projects": {
+        "map": "function (doc) {\n  if (doc)\n  emit(doc.name, 1);\n}"
+      },
+    }
+  }
+
+  return initializeDb(identitiesDbName, dbOpts, admin, secOpts, devOpts, authHeaders, req, res)
+}
+
+const initializePublic = async (
+  admin: string, authHeaders: object,
+  req: any, res: any
+) => {
+  const publicDbName: string = 'http://localhost:5984/habitat-public'
+  const dbOpts = {}
+
+  const secOpts = { // for present, anyway, access is only via _admin
+    admins: {
+      "names": ['no-identity'],
+      "roles": ['never_any_role']
+    },
+    members: {
+      "names": ['no-identity'],
+      "roles": ['never_any_role']
+    }
+  }
+
+  const devOpts: object = { // *todo* dummies; need to be worked out
+    language: 'javascript',
+    views: {
+      "owner-assorted": {
+        "map": "function (doc) {\n  if (doc)\n  emit(doc.name, 1);\n}"
+      },
+      "owner-projects": {
+        "map": "function (doc) {\n  if (doc)\n  emit(doc.name, 1);\n}"
+      },
+    }
+  }
+
+  return initializeDb(publicDbName, dbOpts, admin, secOpts, devOpts, authHeaders, req, res)
 }
 
 const initializeDb = async (
-  targetDbName: string,
-  targetDbOpts: object,
-  admin: string,
-  secOpts: object,
-  devOpts: object,
-  authHeaders: object,
-  req: any,
-  res: any
+  targetDbName: string, targetDbOpts: object,
+  admin: string, secOpts: object, devOpts: object,
+  authHeaders: object, req: any, res: any
 ) => {
-  console.log('go initialize ' + targetDbName + '...')
+  console.log('go to initialize ' + targetDbName + '...')
 
   const superAdmin: string | null = safeEnv(process.env.SUPERADMIN, null)
 
@@ -429,8 +496,9 @@ const initializeDb = async (
 
 export {
   safeEnv,
-  discoveryOwners,
   initializeHabitat,
+  createLocation,
+  setMembership,
   getLoginIdentity,
-  initializeOwners
+  discoveryOwners
 }

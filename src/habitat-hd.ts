@@ -4,10 +4,12 @@ import crypto from 'crypto'
 // *todo* also this - do we have use for the extra three? leave the ide warning in commit to remindnp
 import { createProxyMiddleware/*, Filter, Options, RequestHandler*/ } from 'http-proxy-middleware';
 import {
-  discoveryOwners,
   getLoginIdentity,
   initializeHabitat,
-  safeEnv
+  createLocation,
+  setMembership,
+  safeEnv,
+  discoveryOwners,
 } from "./modules/habitat-hd-cloud";
 
 // *todo* lorra lorra tsignore - type them, probably many anys too
@@ -104,15 +106,25 @@ app.use('/hard-api', async (req, res, next) => {
       "x-auth-couchdb-token": req.headers["x-auth-couchdb-token"]
       // "X-Auth-CouchDB-Token": req.headers["x-auth-couchdb-token"]
     }
-
-    interface Command {
-      cmd:string
-      // other things if/when we need
-    }
+    //
+    // interface Command {
+    //   cmd:string,
+    //   location:string,
+    //   members:[string]
+    //   // other things if/when we need
+    // }
 
     switch((<Command>body).cmd) {
       case 'initializeHabitat':
         return initializeHabitat(agent, authHeaders, req, res)
+        break
+
+      case 'createLocation':
+        return createLocation (<Command>body, agent, authHeaders, req, res);
+        break
+
+      case 'setMembership':
+        return setMembership (<Command>body, agent, authHeaders, req, res);
         break
 
       case 'getLoginIdentity':
