@@ -310,30 +310,72 @@ const createLocation = async (
   const locationDbName: string = 'http://localhost:5984/' + cmd.locationName
   const dbOpts = {}
 
-  const secOpts = { // access is only via _admin
-    admins: {
-      "names": ['no-identity'],
-      "roles": ['never_any_role']
-    },
-    members: {
-      "names": ['no-identity'],
-      "roles": ['never_any_role']
-    }
-  }
+  // *todo* fill in with actual project creation in both dbs
 
-  const devOpts: object = { // *todo* dummies; need to be worked out
-    language: 'javascript',
-    views: {
-      "owner-assorted": {
-        "map": "function (doc) {\n  if (doc)\n  emit(doc.name, 1);\n}"
-      },
-      "owner-projects": {
-        "map": "function (doc) {\n  if (doc)\n  emit(doc.name, 1);\n}"
-      },
-    }
-  }
+  return Promise.resolve({ ok: false, msg: 'createLocation/Owner not implemented yet...'})
 
-  return initializeDb(locationDbName, dbOpts, admin, secOpts, devOpts, authHeaders, req, res)
+  // const secOpts = { // access is only via _admin
+  //   admins: {
+  //     "names": ['no-identity'],
+  //     "roles": ['never_any_role']
+  //   },
+  //   members: {
+  //     "names": ['no-identity'],
+  //     "roles": ['never_any_role']
+  //   }
+  // }
+  //
+  // const devOpts: object = { // *todo* dummies; need to be worked out
+  //   language: 'javascript',
+  //   views: {
+  //     "owner-assorted": {
+  //       "map": "function (doc) {\n  if (doc)\n  emit(doc.name, 1);\n}"
+  //     },
+  //     "owner-projects": {
+  //       "map": "function (doc) {\n  if (doc)\n  emit(doc.name, 1);\n}"
+  //     },
+  //   }
+  // }
+  //
+  // return initializeDb(locationDbName, dbOpts, admin, secOpts, devOpts, authHeaders, req, res)
+}
+
+const createProject = async (
+  cmd:Command,
+  admin: string, authHeaders: object, req: any, res: any
+) => {
+  const locationDbName: string = 'http://localhost:5984/' + cmd.locationName
+  const dbOpts = {}
+
+  // *todo* fill in with actual project creation in both dbs
+
+  return Promise.resolve({ ok: false, msg: 'createProject not implemented yet...'})
+
+  //
+  // const secOpts = { // access is only via _admin
+  //   admins: {
+  //     "names": ['no-identity'],
+  //     "roles": ['never_any_role']
+  //   },
+  //   members: {
+  //     "names": ['no-identity'],
+  //     "roles": ['never_any_role']
+  //   }
+  // }
+  //
+  // const devOpts: object = { // *todo* dummies; need to be worked out
+  //   language: 'javascript',
+  //   views: {
+  //     "owner-assorted": {
+  //       "map": "function (doc) {\n  if (doc)\n  emit(doc.name, 1);\n}"
+  //     },
+  //     "owner-projects": {
+  //       "map": "function (doc) {\n  if (doc)\n  emit(doc.name, 1);\n}"
+  //     },
+  //   }
+  // }
+  //
+  // return initializeDb(locationDbName, dbOpts, admin, secOpts, devOpts, authHeaders, req, res)
 }
 
 const initializeIdentities = async (
@@ -498,6 +540,7 @@ export {
   safeEnv,
   initializeHabitat,
   createLocation,
+  createProject,
   setMembership,
   getLoginIdentity,
   discoveryOwners

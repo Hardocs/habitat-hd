@@ -7,6 +7,7 @@ import {
   getLoginIdentity,
   initializeHabitat,
   createLocation,
+  createProject,
   setMembership,
   safeEnv,
   discoveryOwners,
@@ -121,6 +122,10 @@ app.use('/hard-api', async (req, res, next) => {
 
       case 'createLocation':
         return createLocation (<Command>body, agent, authHeaders, req, res);
+        break
+
+      case 'createProject':
+        return createProject (<Command>body, agent, authHeaders, req, res);
         break
 
       case 'setMembership':
