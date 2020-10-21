@@ -1,13 +1,8 @@
 import PouchDB from 'pouchdb'
 import Database = PouchDB.Database
-// import * as PouchDB from 'pouchdb'
-// @ts-ignorex
-// import Security from 'pouchdb-security'
-// const Security = require('pouchdb-security')
-const fetch = require('node-fetch')
-// good _old_ Node
-require('dotenv').config({path: __dirname + '/../../.env'}) // root of website where you expect it
-// console.log('process.env: ' + JSON.stringify(process.env))
+const fetch = require('node-fetch') // good _old_ Node, and dot=env
+const dotenv = require('dotenv')
+dotenv.config({path: __dirname + '/../../.env'}) // root of the node app is where you expect to find it
 
 const safeEnv = (value: string | undefined, preset: string | null) => { // don't use words like default...
 
@@ -15,6 +10,11 @@ const safeEnv = (value: string | undefined, preset: string | null) => { // don't
     ? value
     : preset
 }
+
+// normally we leave this unset, take this default for CouchDB, but if needed, can change
+const cloudLocalDbUrl:string|null = safeEnv(process.env.COUCHDBLOCALURL, 'http://localhost:5984')
+// there can be only one, and it's not any of the Hardocs public
+const superAdmin:string | null = safeEnv(process.env.SUPERADMIN, null)
 
 // *todo* starting here, lots of opportunity for refactoring out commons
 const getLoginIdentity = (agent: string, authHeaders: object, req: any, res: any) => {
@@ -30,186 +30,8 @@ const getLoginIdentity = (agent: string, authHeaders: object, req: any, res: any
   }
 }
 
-const createOwnersDb = (owner: string, agent: string, req: object) => {
-
-  const dbName = 'http://localhost:5984/habitat-ownership'
-  const createOpts = { // *todo* obviously, these in env...or, use our fetch
-    auth: {
-      username: 'admin-hard',
-      password: '4redwood'
-    }
-  }
-  console.log('begin create')
-  const ownerDb = new PouchDB(dbName, createOpts)
-  console.log('get Info')
-  return ownerDb.info()
-    // .then ((result:object) => {
-    //     console.log ('newDb ownership: status: ' + JSON.stringify(result))
-    //     // return ownerDb.get('_session')
-    //     return ownerDb.getSession()
-    // })
-    .then((result: object) => {
-      console.log('newDb hardocs-ownership: info: ' + JSON.stringify(result))
-      return ownerDb.allDocs({include_docs: true})
-    })
-    // .then ((result:object) => {
-    //     console.log ('newDb hardocs-ownership: allDocs: ' + JSON.stringify(result))
-    //     return ownerDb.get('_design/hardocs')
-    // })
-    .then((result: object) => {
-      console.log('newDb hardocs-ownership: _design/hardocs: ' + JSON.stringify(result))
-
-      //     return ownerDb.get('_security')
-      // })
-      // .then ((result:object) => {
-      //     console.log ('newDb hardocs-ownership: _security: ' + JSON.stringify(result))
-
-      // @ts-ignore
-      // console.log('typeof Security: ' + typeof Security)
-      // console.log('typeof Security.getSecurity: ' + typeof Security.getSecurity)
-      // @ts-ignore
-      //return Security.getSecurity()
-      //
-      // @ts-ignore
-      const couchPath: string = 'http://localhost:5984/habitat-ownership/_security'
-      // const couchPath:string = 'http://localhost:5984/habitat-ownership/_all_docs'
-      // @ts-ignore
-      const headers: object = {
-        // @ts-ignore
-        "X-Auth-CouchDB-Username": req.headers["x-auth-couchdb-username"],
-        // @ts-ignore
-        "X-Auth-CouchDB-Roles": req.headers["x-auth-couchdb-roles"],
-        // @ts-ignore
-        "X-Auth-CouchDB-Token": req.headers["x-auth-couchdb-token"]
-      }
-
-      console.log('about to node-fetch, url: ' + couchPath + ', headers: ' + JSON.stringify(headers))
-      return fetch(couchPath, {method: 'GET', headers: headers})
-    })
-    .then((result: object) => {
-      console.log('creatOwners fetch: ' + JSON.stringify(result))
-      return result
-    })
-    .then((result: object) => {
-      console.log('newDb ownership: node fetch read _security: ' + JSON.stringify(result))
-      // console.log ('newDb ownership: get _security: ' + JSON.stringify(result))
-      console.log('now a set, via ')
-      const docOpts: object = {
-        _id: 'seconddoc',
-        content: 'round and  round'
-      }
-      const secOpts = { // this one only super-admin may change
-        // _id: '_security',
-        admins: {
-          "names": [],
-          "roles": []
-        },
-        members: {
-          "names": ['puddentain-yes-no'],
-          "roles": ['never_any_role']
-        }
-      }
-      const devOpts: object = {
-        language: 'javascript',
-        views: {
-          "owner-assorted": {
-            "map": "function (doc) {\n  if (doc)\n  emit(doc.name, 1);\n}"
-          },
-          "owner-projects": {
-            "map": "function (doc) {\n  if (doc)\n  emit(doc.name, 1);\n}"
-          },
-        }
-      }
-      // @ts-ignore
-      // const couchPath:string = 'http://localhost:5984/habitat-ownership/_design/hardocs3'
-      const couchPath: string = 'http://localhost:5984/habitat-ownership/_security'
-      // const couchPath:string = 'http://localhost:5984/habitat-ownership/_all_docs'
-      // @ts-ignore
-      const headers: object = {
-        // @ts-ignore
-        "x-auth-couchdb-username": req.headers["x-auth-couchdb-username"],
-        // "X-Auth-CouchDB-Username": req.headers["x-auth-couchdb-username"],
-        // @ts-ignore
-        "x-auth-couchdb-roles": req.headers["x-auth-couchdb-roles"],
-        // "X-Auth-CouchDB-Roles": req.headers["x-auth-couchdb-roles"],
-        // @ts-ignore
-        "x-auth-couchdb-token": req.headers["x-auth-couchdb-token"]
-        // "X-Auth-CouchDB-Token": req.headers["x-auth-couchdb-token"]
-      }
-
-      return fetch(couchPath, {
-        method: 'PUT',
-        headers: headers,
-        body: JSON.stringify(secOpts)
-      })
-
-      // return ownerDb.put(secOpts)
-    })
-    .then((result: object) => {
-      // @ts-ignore
-      return result.text()
-    })
-    .then((result: object) => {
-      console.log('newDb ownership: node fetch PUT _security: ' + result)
-
-      console.log('newDb  put /_design/hardocs status: ' + JSON.stringify(result))
-      return result
-    })
-    .then(() => {
-      const devOpts = {
-        _id: '_design/hardocs4',
-        language: 'javascript',
-        views: {
-          "owner-assorted-yes": {
-            "map": "function (doc) {\n  if (doc)\n  emit(doc.name, 1);\n}"
-          },
-          "owner-projects": {
-            "map": "function (doc) {\n  if (doc)\n  emit(doc.name, 1);\n}"
-          },
-        }
-      }
-      // @ts-ignorex
-      // const desPath:string = '/habitat-ownership/_design/hardocs4'
-      return ownerDb.put(devOpts)
-    })
-    .then(result => {
-      console.log('newDb  put /_design/hardocs4 status: ' + JSON.stringify(result))
-      return result
-    })
-    .catch((err: string) => {
-      console.log('newDb error: ' + JSON.stringify(err))
-      return err
-    })
-}
-
-
-const discoveryOwners = (agent: string, authHeaders: object, req: any, res: any) => {
-  console.log('go discoveryOwners')
-
-  const owner: string = 'ggl/' + agent
-
-  createOwnersDb(owner, agent, req)
-    .then(result => {
-      console.log('createOwner: ' + JSON.stringify(result))
-    })
-    .catch(err => {
-      console.log('createOwner:error: ' + err)
-    })
-
-  if (req.body.json) {
-    res.type('application/json')
-    return res.send({ok: true, msg: 'i am a beautiful butterfly'})
-  } else {
-    res.type('text/plain')
-    return res.send('i am a beautiful butterfly')
-  }
-  // res.sendStatus(200) // *todo* don't do this - look into where we might or the like, also respond to such
-}
-
-
-// *todo* this is where it starts getting real...above discovery will be used, then out.
-
-// this is how we get our auth keys into PouchDB, as we open a database
+// this is where it starts getting real...above discovery will be used, then out.
+// the first section is how we get our auth keys into PouchDB, as we open a database
 
 const authedPouchDb = (dbPath: string, authHeaders: object, options: object = {}): Database => {
   options = Object.assign(options,
@@ -236,7 +58,7 @@ const initializeHabitat = async (
     // thus this is as it is.
     //
     // Fail, and you want to analyze before making a move.
-    // deletion should be done on choice, and as provided and protected in the Fauxton.
+    // deletion should be done on manual choice, and as provided and protected in the Fauxton.
 
     const initResult = await initializeIdentities(admin, authHeaders, req, res)
       .then (result => {
@@ -275,7 +97,7 @@ const setMembership = async (
   cmd:Command,
   admin: string, authHeaders: object, req: any, res: any
 ) => {
-  const locationDbName: string = 'http://localhost:5984/' + cmd.locationName
+  const locationDbName: string = cloudLocalDbUrl + '/' + cmd.locationName
   const dbOpts = {}
 
   // *todo* actually read first, then modify....
@@ -298,7 +120,7 @@ const setLocationSecurity = async (
   admin: string, secOpts: object,
   authHeaders: object, req: any, res: any
 ) => {
-  const locationDbName: string = 'http://localhost:5984/' + locationName
+  const locationDbName: string = cloudLocalDbUrl + '/' + locationName
 
   // return Promise.reject ({ ok: false, msg: 'Setting security of locations not implemented yet'})
   return res.send ({ ok: false, msg: 'Setting security of locations not implemented yet'})
@@ -308,13 +130,10 @@ const createLocation = async (
   cmd:Command,
   admin: string, authHeaders: object, req: any, res: any
 ) => {
-  const locationDbName: string = 'http://localhost:5984/' + cmd.locationName
+  const locationDbName: string = cloudLocalDbUrl + '/' + cmd.locationName
   const dbOpts = {}
 
-
-  // *todo* fill in with actual location creation in both dbs
-
-  // return res.send (JSON.stringify({ ok: false, msg: 'createLocation/Owner not implemented yet...'}))
+  // *todo* still need to fill in actual location info in identities db
 
   // as everywhere, these are dummies so far
   const secOpts = { // access is only via _admin
@@ -345,7 +164,7 @@ const createLocation = async (
       if (!result.ok) { // this is a little redundant, but foretells other methods
         throw result
       }
-      return res.send({ ok: true, msg: 'Ok, Owner ' + cmd.locationName
+      return res.send({ ok: true, msg: 'Ok, Location: ' + cmd.locationName
           + ' created, yet to be linked into Membership...'})
     })
     .catch (err => {
@@ -354,49 +173,79 @@ const createLocation = async (
     })
 }
 
+// translate pouch's several forms possible into our expected form
+const pouchError = (activity:string, err:PouchErr):PouchErr => {
+  console.log(activity + ':error: ' + JSON.stringify(err))
+  let error = err
+  if (err.error) {
+    if (err.reason) {
+      error = {
+        ok: false,
+        msg: 'error: ' + err.error + ', reason: ' + err.reason
+      }
+    }
+    else if (err.status) {
+      error = {
+        ok: false,
+        msg: 'status: '+ err.status + ', name: ' + err.name +
+          ', error: ' + err.error + ', message: ' + err.message
+      }
+    }
+  }
+  return error
+}
+
 const createProject = async (
   cmd:Command,
   admin: string, authHeaders: object, req: any, res: any
 ) => {
-  const locationDbName: string = 'http://localhost:5984/' + cmd.locationName
+  const targetDbName: string = cloudLocalDbUrl + '/' + cmd.owner
   const dbOpts = {}
 
-  // *todo* fill in with actual project creation in both dbs
+  // *todo* fill in full information for actual project creation in both dbs
 
-  return Promise.resolve({ ok: false, msg: 'createProject not implemented yet...'})
+  // return res.send (JSON.stringify({ ok: false, msg: 'create Project: ' +
+  //     cmd.project + ', for owner: ' + cmd.owner + ', by ' + cmd.identity + '  not implemented yet...'}))
 
-  //
-  // const secOpts = { // access is only via _admin
-  //   admins: {
-  //     "names": ['no-identity'],
-  //     "roles": ['never_any_role']
-  //   },
-  //   members: {
-  //     "names": ['no-identity'],
-  //     "roles": ['never_any_role']
-  //   }
-  // }
-  //
-  // const devOpts: object = { // *todo* dummies; need to be worked out
-  //   language: 'javascript',
-  //   views: {
-  //     "owner-assorted": {
-  //       "map": "function (doc) {\n  if (doc)\n  emit(doc.name, 1);\n}"
-  //     },
-  //     "owner-projects": {
-  //       "map": "function (doc) {\n  if (doc)\n  emit(doc.name, 1);\n}"
-  //     },
-  //   }
-  // }
-  //
-  // return initializeDb(locationDbName, dbOpts, admin, secOpts, devOpts, authHeaders, req, res)
+  const initialData = {
+    _id: cmd.project,
+    metaData: { projectName: cmd.project },
+    readme: '---\n---\n# ' + cmd.project + '\n\nInitial Readme...\n',
+    img: 'hex-encoded dummy image here'
+  }
+
+  const db = authedPouchDb(targetDbName, authHeaders, { skip_setup: true })
+  const createResult = await db.info()
+    .then (result => {
+      console.log ('createProject:status: ' + JSON.stringify(result))
+      return db.put(initialData) // upsertProjectToDatabase(owner, project, data, db)
+    })
+    .then(result => {
+      console.log ('createProject:put ' + JSON.stringify(result))
+      if (!result.ok) { // errors won't throw of themselves, thus we test
+          throw (result)
+      }
+      return { ok: true, msg: 'Success - created Project: ' + cmd.owner + '/' + cmd.project }
+    })
+    .catch (err => {
+      const formatted = pouchError('createProject', err)
+      console.log(formatted)
+      if ((<PouchErr>err).status === 409) {
+        // at this point, that would be the reason
+        return { ok: false, msg: 'error:Project ' + cmd.project + ' has already been created, and has data in it!'}
+      } else {
+        return formatted
+      }
+    })
+
+    return res.send(createResult)
 }
 
 const initializeIdentities = async (
   admin: string, authHeaders: object,
   req: any, res: any
 ) => {
-  const identitiesDbName: string = 'http://localhost:5984/habitat-identities'
+  const identitiesDbName: string = cloudLocalDbUrl + '/habitat-identities'
   const dbOpts = {}
 
   const secOpts = { // access is only via _admin
@@ -429,7 +278,7 @@ const initializePublic = async (
   admin: string, authHeaders: object,
   req: any, res: any
 ) => {
-  const publicDbName: string = 'http://localhost:5984/habitat-public'
+  const publicDbName: string = cloudLocalDbUrl + '/habitat-public'
   const dbOpts = {}
 
   const secOpts = { // for present, anyway, access is only via _admin
@@ -463,12 +312,10 @@ const initializeDb = async (
   admin: string, secOpts: object, devOpts: object,
   authHeaders: object, req: any, res: any
 ) => {
-  console.log('go to initialize ' + targetDbName + '...')
-
-  const superAdmin: string | null = safeEnv(process.env.SUPERADMIN, null)
+  console.log('about to initialize ' + targetDbName + '...')
 
   if (admin !== superAdmin) { // there can be only one -- Highlander
-    const msg = 'Initiation not permitted for ' + admin
+    const msg = 'Initiation not permitted for ' + admin + ' (check Habitat config)'
     console.log(msg)
     res.type('application/json')
     return res.send({ok: false, msg: msg})
@@ -480,7 +327,7 @@ const initializeDb = async (
       .then(result => {
         // @ts-ignore
         if (!(result.error && result.error === 'not_found')) {
-          const msg = targetDbName + ' already exists! Habitat has been initialized, ' +
+          const msg = targetDbName + ' already exists! ' +
             'and has data you don\'t likely want to lose, thank you...'
           console.log(msg)
           throw new Error(msg)
@@ -556,6 +403,5 @@ export {
   createLocation,
   createProject,
   setMembership,
-  getLoginIdentity,
-  discoveryOwners
+  getLoginIdentity
 }
