@@ -4,6 +4,8 @@ const fetch = require('node-fetch') // good _old_ Node, and dot=env
 const dotenv = require('dotenv')
 dotenv.config({path: __dirname + '/../../.env'}) // root of the node app is where you expect to find it
 
+// *todo* in here, especially, lots of @ ts-ignore to clear, adding to d.ts declares
+
 const safeEnv = (value: string | undefined, preset: string | null) => { // don't use words like default...
 
   return typeof value !== 'undefined' && value
@@ -17,6 +19,8 @@ const cloudLocalDbUrl:string|null = safeEnv(process.env.COUCHDBLOCALURL, 'http:/
 const superAdmin:string | null = safeEnv(process.env.SUPERADMIN, null)
 
 // *todo* starting here, lots of opportunity for refactoring out commons
+// if this looks a little strange, it's an identifiable way to get it from agent which we always produce,
+// *todo* except we should call it operator or just identity, instead of agent, which now has a different meeting
 const getLoginIdentity = (agent: string, authHeaders: object, req: any, res: any) => {
 
   const identity = { ok: true, identity: agent }
@@ -100,7 +104,7 @@ const setMembership = async (
   const locationDbName: string = cloudLocalDbUrl + '/' + cmd.locationName
   const dbOpts = {}
 
-  // *todo* actually read first, then modify....
+  // *todo* actually read first, then modify...this is just a beginning sketch, goes out with the setSecurity refactor.
   const secOpts = { // *todo* for now, access is only via _admin
     admins: {
       "names": ['no-identity'],
@@ -115,6 +119,7 @@ const setMembership = async (
   return setLocationSecurity(locationDbName, dbOpts, admin, secOpts, authHeaders, req, res)
 }
 
+// *todo* actually use setSecurity () for all such, when tested
 const setLocationSecurity = async (
   locationName: string, targetDbOpts: object,
   admin: string, secOpts: object,
@@ -128,12 +133,13 @@ const setLocationSecurity = async (
 
 const createLocation = async (
   cmd:Command,
-  admin: string, authHeaders: object, req: any, res: any
-) => {
+  adminIdentity: string, authHeaders: object, req: any, res: any) => {
+
   const locationDbName: string = cloudLocalDbUrl + '/' + cmd.locationName
   const dbOpts = {}
 
-  // *todo* still need to fill in actual location info in identities db
+  // *todo* we'll fill in the identities part first - this will need to be removed if we fail later,
+  // though it will fail itself if  the problem is that the location already exists, so will account for most
 
   // as everywhere, these are dummies so far
   const secOpts = { // access is only via _admin
@@ -159,40 +165,54 @@ const createLocation = async (
     }
   }
 
-  initializeDb(locationDbName, dbOpts, admin, secOpts, devOpts, authHeaders, req, res)
+  const locationData = {
+    _id: cmd.locationName,
+    agents: [
+      adminIdentity
+    ]
+  }
+
+  // safely get the identity db if it's there; might not have been initialized
+  const identitiesDbPath = cloudLocalDbUrl + '/habitat-identities'
+  const identitiesDb = authedPouchDb(identitiesDbPath, { skip_setup: true })
+  await identitiesDb.info()
+    .then (result => {
+      console.log ('createLocation:identitydb:status: ' + JSON.stringify(result))
+      return identitiesDb.put(locationData) // upsertProjectToDatabase(owner, project, data, db)
+    })
+    .then(result => {
+      console.log ('createLocation:identitiesdb:put ' + JSON.stringify(result))
+      if (!result.ok) { // errors won't throw of themselves, thus we test
+        throw (result)
+      }
+      console.log('created identity for: ' + cmd.owner + '/' + cmd.project)
+    })
+    .catch (err => {
+      const formatted = pouchError('createLocation:add-identity', err)
+      console.log(formatted)
+      let errResult = {}
+      if ((<PouchErr>err).status === 409) {
+        // at this point, that would be the reason
+        errResult = { ok: false, msg: 'error:Location ' + cmd.locationName + ' has already been created, and has data in it!'}
+      } else {
+        errResult = formatted
+      }
+      return res.send(JSON.stringify(errResult))
+    })
+    .then (() => {
+      return initializeDb(locationDbName, dbOpts, adminIdentity, secOpts, devOpts, authHeaders, req, res)
+    })
     .then (result => {
       if (!result.ok) { // this is a little redundant, but foretells other methods
         throw result
       }
       return res.send({ ok: true, msg: 'Ok, Location: ' + cmd.locationName
-          + ' created, yet to be linked into Membership...'})
+          + ' created, linked with first agent into Identities...'})
     })
     .catch (err => {
       console.log('createLocation:error: ' + JSON.stringify(err))
       return res.send(err)
     })
-}
-
-// translate pouch's several forms possible into our expected form
-const pouchError = (activity:string, err:PouchErr):PouchErr => {
-  console.log(activity + ':error: ' + JSON.stringify(err))
-  let error = err
-  if (err.error) {
-    if (err.reason) {
-      error = {
-        ok: false,
-        msg: 'error: ' + err.error + ', reason: ' + err.reason
-      }
-    }
-    else if (err.status) {
-      error = {
-        ok: false,
-        msg: 'status: '+ err.status + ', name: ' + err.name +
-          ', error: ' + err.error + ', message: ' + err.message
-      }
-    }
-  }
-  return error
 }
 
 const createProject = async (
@@ -362,7 +382,7 @@ const initializeDb = async (
         const msg = targetDbName + ' resulting _security: ' + JSON.stringify(result)
         console.log(msg)
         if (!result.ok) {
-          throw new Error('setting failed: ' + msg)
+          throw new Error('setting _security failed: ' + msg)
         }
 
         console.log('now let\'s do _design/documents')
@@ -378,7 +398,7 @@ const initializeDb = async (
         const msg = targetDbName + ' _design docs: ' + JSON.stringify(result)
         console.log(msg)
         if (!result.ok) {
-          throw new Error('setting failed: ' + msg)
+          throw new Error('setting design docs failed: ' + msg)
         }
         return {ok: true, msg: 'Ok, ' + targetDbName + ' is initiated'}
       })
@@ -397,11 +417,108 @@ const initializeDb = async (
   return cmdResult
 }
 
+// *todo* next pair blocked in from initializeDb where ought to be integrated, untested, will have commands,
+// *todo* note also difference in the returns: settle, unified; also clean up logging, introduce our controlled logger?
+
+const setSecurity = async (targetDbName:string,secOpts:object, authHeaders:object) => {
+  // this and the next can't use targetDb.put(secOpts), as pouchDb itself
+  // blocks requests like _security _id and _design/doc even for _admin,
+  // so we organize fetch in another way for it
+
+  const couchPath: string = targetDbName + '/_security'
+  const cmdResult = await fetch(couchPath, {
+    method: 'PUT',
+    headers: authHeaders,
+    body: JSON.stringify(secOpts)
+  })
+    .then((result: { json: () => any }) => result.json()) // json from the promise
+    .then((result: { ok: any }) => {
+      const msg = targetDbName + ' resulting _security: ' + JSON.stringify(result)
+      console.log(msg)
+      if (!result.ok) {
+        throw new Error('setting _security failed: ' + msg)
+      }
+      return result
+    })
+    .catch((err: { message: any }) => {
+      console.log('setSecurity:' + targetDbName + ':error: ' + JSON.stringify(err))
+      const msg: string = 'setSecurity:' + targetDbName + ':error: ' +
+        (err.message
+          ? err.message // thrown Errors
+          : JSON.stringify(err))
+      const errResult = {ok: false, msg: msg}
+      // console.log('setSecurity:errResult: ' + JSON.stringify(errResult))
+      return errResult
+    })
+
+  console.log('setSecurity:result: ' + JSON.stringify(cmdResult))
+  return cmdResult
+}
+
+const setDesignDocs = async (targetDbName:string, devOpts:object, authHeaders:object) => {
+
+  console.log('now let\'s do _design/documents')
+  const couchPath: string = targetDbName + '/_design/owner-projects'
+  const cmdResult = fetch(couchPath, {
+    method: 'PUT',
+    headers: authHeaders,
+    body: JSON.stringify(devOpts)
+  })
+  .then((result: { json: () => any }) => result.json()) // json from the promise
+  .then((result: { ok: any }) => {
+    const msg = targetDbName + ' _design docs: ' + JSON.stringify(result)
+    console.log(msg)
+    if (!result.ok) {
+      throw new Error('setting design docs failed: ' + msg)
+    }
+    return { ok: true, msg: 'Ok, ' + targetDbName + ' design docs set' }
+  })
+    .catch((err: { message: any }) => {
+      // *todo* refactor out this err pattern?
+      console.log('setDesignDocs:' + targetDbName + ':error: ' + JSON.stringify(err))
+      const msg: string = 'setDesignDocs:' + targetDbName + ':error: ' +
+        (err.message
+          ? err.message // thrown Errors
+          : JSON.stringify(err))
+      const errResult = {ok: false, msg: msg}
+      // console.log('setDesignDocs:errResult: ' + JSON.stringify(errResult))
+      return errResult
+    })
+
+  console.log('setDesignDocs:result: ' + JSON.stringify(cmdResult))
+  return cmdResult
+}
+
+
+// translate pouch's several forms possible into our expected form
+const pouchError = (activity:string, err:PouchErr):PouchErr => {
+  console.log(activity + ':error: ' + JSON.stringify(err))
+  let error = err
+  if (err.error) {
+    if (err.reason) {
+      error = {
+        ok: false,
+        msg: 'error: ' + err.error + ', reason: ' + err.reason
+      }
+    }
+    else if (err.status) {
+      error = {
+        ok: false,
+        msg: 'status: '+ err.status + ', name: ' + err.name +
+          ', error: ' + err.error + ', message: ' + err.message
+      }
+    }
+  }
+  return error
+}
+
 export {
   safeEnv,
   initializeHabitat,
   createLocation,
   createProject,
   setMembership,
+  setSecurity,
+  setDesignDocs,
   getLoginIdentity
 }
