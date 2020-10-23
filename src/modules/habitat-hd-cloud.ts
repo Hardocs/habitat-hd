@@ -162,8 +162,8 @@ const createLocation = async (
 
   const locationData = {
     _id: cmd.location,
-    identities: [
-      identity
+    agents: [
+      identity // creator is first agent; can go, *todo* but never allow less than one agent when we get to deletes
     ]
   }
 
