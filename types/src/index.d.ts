@@ -2,10 +2,11 @@
 interface Command {   // other options if/when we need
   cmd:string,
   identity:string,
-  locationName?:string,
+  location?:string,
   members?:[string],
   project?:string,
-  owner?:string,
+  dashSecurity?:string,
+  designDocs?:string,
   addOrDelete?:boolean,
 }
 

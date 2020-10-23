@@ -8,6 +8,8 @@ import {
   initializeHabitat,
   createLocation,
   createProject,
+  setSecurity,
+  setDesignDocs,
   setMembership,
   safeEnv,
 } from "./modules/habitat-hd-cloud";
@@ -93,8 +95,7 @@ app.use('/hard-api', async (req, res, next) => {
   console.log('current req.body: ' + JSON.stringify(req.body))
   if (req.originalUrl.includes('habitat-request')) {
     // console.log  ('we\'re commanding: ' + JSON.stringify(req.headers))
-    const reqParts = req.url.split('/')
-    const agent:any = req.headers['x-forwarded-email']
+    const identity:any = req.headers['x-forwarded-email']
     const body:Command = req.body
     // @ts-ignore
     const authHeaders:object = {
@@ -108,23 +109,32 @@ app.use('/hard-api', async (req, res, next) => {
 
     switch(body.cmd) {
       case 'initializeHabitat':
-        return initializeHabitat(agent, authHeaders, req, res)
+        return initializeHabitat(identity, authHeaders, req, res)
         break
 
       case 'createLocation':
-        return createLocation (body, agent, authHeaders, req, res);
+        return createLocation (body, identity, authHeaders, req, res);
         break
 
       case 'createProject':
-        return createProject (body, agent, authHeaders, req, res);
+        return createProject (body, identity, authHeaders, req, res);
         break
 
       case 'setMembership':
-        return setMembership (body, agent, authHeaders, req, res);
+        return setMembership (body, identity, authHeaders, req, res);
         break
 
+      // *todo* tbd these -- arguments are probably correct, need to pull out items on these set funcs
+      // case 'setSecurity':
+      //   return setSecurity (body, identity, authHeaders, req, res);
+      //   break
+      //
+      // case 'setDesignDocs':
+      //   return setDesignDocs (body, identity, authHeaders, req, res);
+      //   break
+
       case 'getLoginIdentity':
-        return getLoginIdentity (agent, authHeaders, req, res);
+        return getLoginIdentity (identity, authHeaders, req, res);
         break
 
       default:
