@@ -144,7 +144,7 @@ const createLocation = async (
     },
     members: {
       "names": ['no-identity'],
-      "roles": ['never_any_role']
+      "roles": ['users'] // only this allowed
     }
   }
 
@@ -158,9 +158,10 @@ const createLocation = async (
         "map": "function (doc) {\n  if (doc)\n  emit(doc.name, 1);\n}"
       },
     },
+    "validate_doc_update": "function(newDoc, oldDoc, userCtx, secObj){ if ('_admin' in userCtx.roles === false && doc._id.substr(0, 7) === '_design') { throw ({ unauthorized: 'you must be a server admin to alter design documents'}) }}",
     "filters": {
       "onlyTheLonely": "function(doc) { return doc._id.substr(0, 7) !== '_design'; }"
-    },
+    }
   }
 
   const locationData = {
