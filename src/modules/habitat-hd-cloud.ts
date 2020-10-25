@@ -157,7 +157,10 @@ const createLocation = async (
       "location-projects": {
         "map": "function (doc) {\n  if (doc)\n  emit(doc.name, 1);\n}"
       },
-    }
+    },
+    "filters": {
+      "onlyTheLonely": "function(doc) { return doc._id.substr(0, 7) !== '_design'; }"
+    },
   }
 
   const locationData = {
