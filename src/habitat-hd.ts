@@ -45,7 +45,7 @@ app.use('/hard-api', async (req, res, next) => {
       dbRoles = '_admin'
       break
     default: // all others, and has consequences in habitat as well as db
-      dbRoles = 'users'
+      dbRoles = 'role-empty' // *todo* very temporary
       break
   }
 
@@ -107,6 +107,7 @@ app.use('/hard-api', async (req, res, next) => {
       "x-auth-couchdb-token": req.headers["x-auth-couchdb-token"]
     }
 
+    console.log ('body.cmd: ' + body.cmd)
     switch(body.cmd) {
       case 'initializeHabitat':
         return initializeHabitat(identity, authHeaders, req, res)

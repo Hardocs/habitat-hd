@@ -4,3 +4,4 @@ ubuntu/var/www/hd/dist/
 
 .env
 package-lock.json
+yarn.lock

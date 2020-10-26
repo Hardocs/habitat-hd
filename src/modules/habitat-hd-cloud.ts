@@ -220,10 +220,7 @@ const createProject = async (
   const targetDbName: string = cloudLocalDbUrl + '/' + cmd.location
   const dbOpts = {}
 
-  // *todo* fill in full information for actual project creation in both dbs
-
-  // return res.send (JSON.stringify({ ok: false, msg: 'create Project: ' +
-  //     cmd.project + ', for location: ' + cmd.location + ', by ' + cmd.identity + '  not implemented yet...'}))
+  // *todo* complete filling in full information for actual project creation in _both_ dbs
 
   const initialData = {
     _id: cmd.project,
@@ -238,6 +235,11 @@ const createProject = async (
     .then (result => {
       console.log ('createProject:status: ' + JSON.stringify(result))
       return db.put(initialData) // upsertProjectToDatabase(location, project, data, db)
+    })
+    .then (result => {
+      console.log('createProject: if ok, write project into location.')
+      // *todo* here write the project into the location in Locations
+      return result
     })
     .then(result => {
       console.log ('createProject:put ' + JSON.stringify(result))
