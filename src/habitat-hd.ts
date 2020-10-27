@@ -24,7 +24,10 @@ let proxyDestination:string = 'http://localhost:5984'
 const superAdmin:string = <string>safeEnv(process.env.SUPERADMIN, 'none')
 const googleClientSecret:string = <string>safeEnv(process.env.GOOGLE_CLIENT_SECRET, 'none')
 
-let requestIdentity:string|null = ''
+let requestIdentity:string|null = 'no-identity'
+let dbRoles:string = 'no-role'
+let dbId:string = (requestIdentity ? requestIdentity : 'no-email')
+let authType:string = 'proxy'
 
 // *todo* consider modularizing the sequentials, but remember globals if do
 
@@ -36,13 +39,10 @@ app.use('/hard-api', async (req, res, next) => {
 
   // later we look these up in db, separate connection
   requestIdentity = <string|null>req.headers['x-forwarded-email']
-  console.log('req email: ' + requestIdentity)
+  console.log('req identity: ' + requestIdentity)
 
   // much simplified what is to happen here: no more admins role, only _admin superAdmin, and users
   // and, identity will be simply the full email address, throughout
-  const dbId:string = (requestIdentity ? requestIdentity : 'no-email')
-  let dbRoles:string = 'users'
-  let authType:string = 'proxy'
 
   switch (requestIdentity) {
     case superAdmin:
@@ -166,27 +166,22 @@ app.use('/hard-api', async (req, res, next) => {
   // *todo* and how we're doing this, not the way, but learning things
   // *todo* we'll have a function to do all the lookup in habitat-identities, per project
 
-const permitted = (requestIdentity === 'narreshen@gmail.com'
-  && (req.path === '/habitat-projects/'
-    || req.path === '/'
-    || req.path.match(/\/habitat-projects\/_changes/)
-    || req.path.match(/\/habitat-projects\/_local/)
-    || req.path === '/habitat-projects/replicate'
-    || req.path === '/habitat-projects/_bulk_get'
-    || req.path.match(/\/habitat-projects\/_all_docs/)
-  )
-  || requestIdentity === superAdmin)
+const permitted =
+  dbRoles.includes('_admin')
+  || dbRoles.includes('agent')
+  || dbRoles.includes('users')
 
-  console.log ('db request path: ' + req.path + ', id: ' + requestIdentity + ', sa: ' + superAdmin)
+  console.log ('db permitted: ' + permitted + ', on roles: ' + dbRoles)
 
-  if (!permitted) {
-    return res.send({ok: false, msg: 'not authorized'})
+  if (permitted) {
+    next() // advance and be actually permitted according to role
   } else {
-    next()
+    // this db doesn't know them, according to our habitat-identities, or any specials otherwise
+    return res.send({ok: false, msg: 'not authorized'})
   }
 })
 
-// no commands, so proceed to proxy to the database itself.
+// no commands, and permitted, so proceed to proxy to the database itself.
 // It's our completing possibility.
 // the REs look a little funny, so that empty queries will act
 // sensibly regardless of trailing slash presence or not
