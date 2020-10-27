@@ -24,6 +24,10 @@ let proxyDestination:string = 'http://localhost:5984'
 const superAdmin:string = <string>safeEnv(process.env.SUPERADMIN, 'none')
 const googleClientSecret:string = <string>safeEnv(process.env.GOOGLE_CLIENT_SECRET, 'none')
 
+let requestIdentity:string|null = ''
+
+// *todo* consider modularizing the sequentials, but remember globals if do
+
 // first, get our identity and auth into place
 app.use('/hard-api', async (req, res, next) => {
 
@@ -31,7 +35,7 @@ app.use('/hard-api', async (req, res, next) => {
   // console.log ('req headers:' + JSON.stringify(req.headers))
 
   // later we look these up in db, separate connection
-  const requestIdentity:string|null = <string|null>req.headers['x-forwarded-email']
+  requestIdentity = <string|null>req.headers['x-forwarded-email']
   console.log('req email: ' + requestIdentity)
 
   // much simplified what is to happen here: no more admins role, only _admin superAdmin, and users
@@ -44,8 +48,14 @@ app.use('/hard-api', async (req, res, next) => {
     case superAdmin:
       dbRoles = '_admin'
       break
+    case 'narrishin@gmail.com':  // *todo* very temporary, until we get lookup to decide
+      dbRoles = 'agent'
+      break
+    case 'narreshen@gmail.com':  // *todo* very temporary, until we get lookup to decide
+      dbRoles = 'users'
+      break
     default: // all others, and has consequences in habitat as well as db
-      dbRoles = 'role-empty' // *todo* very temporary
+      dbRoles = 'role-empty' // *todo* will be = roleFromIdentity(requestIdentity)
       break
   }
 
@@ -65,7 +75,7 @@ app.use('/hard-api', async (req, res, next) => {
     // console.log('token is: ' + token)
     req.headers["x-auth-couchdb-token"] = token
   }
-  next ()
+  next()
 })
 
 // this one will go out later, or in some way use a debug key,  because that's what it is
@@ -144,6 +154,33 @@ app.use('/hard-api', async (req, res, next) => {
         return res.send (JSON.stringify({ ok: false, msg: msg }))
         break
     }
+  } else {
+    next()
+  }
+})
+
+app.use('/hard-api', async (req, res, next) => {
+  // here we critically for security allow very little access indeed...
+  // and then only tightly controlled. Perhaps only fully checked replicate necessary?
+  // *todo* for the present, until db lookup, stop it all except our test id replicating
+  // *todo* and how we're doing this, not the way, but learning things
+  // *todo* we'll have a function to do all the lookup in habitat-identities, per project
+
+const permitted = (requestIdentity === 'narreshen@gmail.com'
+  && (req.path === '/habitat-projects/'
+    || req.path === '/'
+    || req.path.match(/\/habitat-projects\/_changes/)
+    || req.path.match(/\/habitat-projects\/_local/)
+    || req.path === '/habitat-projects/replicate'
+    || req.path === '/habitat-projects/_bulk_get'
+    || req.path.match(/\/habitat-projects\/_all_docs/)
+  )
+  || requestIdentity === superAdmin)
+
+  console.log ('db request path: ' + req.path + ', id: ' + requestIdentity + ', sa: ' + superAdmin)
+
+  if (!permitted) {
+    return res.send({ok: false, msg: 'not authorized'})
   } else {
     next()
   }
