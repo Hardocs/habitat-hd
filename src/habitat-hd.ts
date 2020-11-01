@@ -12,6 +12,7 @@ import {
   setDesignDocs,
   setMembership,
   safeEnv,
+  safeHeader,
 } from "./modules/habitat-hd-cloud";
 
 // *todo* replace all potentiallly useful console.log with controllable logger from habitat.client
@@ -107,14 +108,10 @@ app.use('/hard-api', async (req, res, next) => {
     // console.log  ('we\'re commanding: ' + JSON.stringify(req.headers))
     const identity:any = req.headers['x-forwarded-email']
     const body:Command = req.body
-    // @ts-ignore
-    const authHeaders:object = {
-      // @ts-ignore
-      "x-auth-couchdb-username": req.headers["x-auth-couchdb-username"],
-      // @ts-ignore
-      "x-auth-couchdb-roles": req.headers["x-auth-couchdb-roles"],
-      // @ts-ignore
-      "x-auth-couchdb-token": req.headers["x-auth-couchdb-token"]
+    const authHeaders:IAuthHeaders = {
+      "x-auth-couchdb-username": safeHeader(req.headers["x-auth-couchdb-username"]),
+      "x-auth-couchdb-roles": safeHeader(req.headers["x-auth-couchdb-roles"]),
+      "x-auth-couchdb-token": safeHeader(req.headers["x-auth-couchdb-token"])
     }
 
     console.log ('body.cmd: ' + body.cmd)
