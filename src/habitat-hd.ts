@@ -1,5 +1,7 @@
 import express = require ('express')
 // import * as express from 'express';
+import helmet = require('helmet')
+import session = require('express-session')
 import crypto from 'crypto'
 // *todo* also this - do we have use for the extra three? leave the ide warning in commit to remindnp
 import { createProxyMiddleware/*, Filter, Options, RequestHandler*/ } from 'http-proxy-middleware';
@@ -18,7 +20,24 @@ import {
 // *todo* replace all potentiallly useful console.log with controllable logger from habitat.client
 // *todo* lorra lorra tsignore - type them, probably many anys too
 
+// *todo* we begin with Express, and then its needful security - not entirely to production level yet?
+//  See notes, and per https://expressjs.com/en/advanced/best-practice-security.html
+
 const app = express()
+app.use(helmet()) // helmet covers a number of securityissues, but it is not sufficient, so more
+
+// *todo* this is using the low-capacity default storage - move to couch-expression, or
+// session-pouchdb-store, or less likely, connect-redis & redis, as our traffic doesn't need?
+// *todo* however, consider use of node-rate-limiter-flexible, which does need redis
+
+app.set('trust proxy', 1) // trust first proxy
+app.use(session({
+  secret: 'funicular$suisse',
+  name: 'sessionId'
+}))
+
+// *todo* likely should add rate-limiter-flexible here, as above, requires redis
+
 const listenPort:number = 5983 // distinguish from 5984 so we can talk to it...
 let proxyDestination:string = 'http://localhost:5984'
 
@@ -30,9 +49,9 @@ let dbRoles:string = 'no-role'
 let dbId:string = (requestIdentity ? requestIdentity : 'no-email')
 let authType:string = 'proxy'
 
-// *todo* consider modularizing the sequentials, but remember globals if do
+// *todo* consider modularizing the sequentials, but remember globals/passes if do
 
-// first, get our identity and auth into place
+// now, get our identity and auth into place
 app.use('/hard-api', async (req, res, next) => {
 
   console.log ('req url:' + JSON.stringify(req.url))

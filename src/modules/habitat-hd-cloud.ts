@@ -22,9 +22,15 @@ const superAdmin:string | null = safeEnv(process.env.SUPERADMIN, null)
 
 // *todo* starting here, lots of opportunity for refactoring out commons
 // if this looks a little strange, it's an identifiable way to get it from admin which we always produce,
-const getLoginIdentity = (admin: string, authHeaders: object, req: any, res: any) => {
+const getLoginIdentity = (identity: string, authHeaders: IAuthHeaders, req: any, res: any) => {
 
-  const identityResult = { ok: true, admin: admin }
+  const roles = safeHeader(authHeaders['x-auth-couchdb-roles'])
+  const identityResult = {
+    ok: true,
+    identity: identity,
+    roles: roles,
+    possibleRoles: supersPossible(identity)
+  }
 
   res.type('application/json')
   return res.send(identityResult)
@@ -103,12 +109,12 @@ const setMembership = async (
   // *todo* actually read first, then modify...this is just a beginning sketch, goes out with the setSecurity refactor.
   const secOpts = { // *todo* for now, access is only via _admin
     admins: {
-      "names": ['no-admin'],
-      "roles": ['never_any_role']
+      "names": ['never-any-name'],
+      "roles": ['never-any-role']
     },
     members: {
-      "names": ['no-admin'],
-      "roles": ['never_any_role']
+      "names": ['never-any-name'],
+      "roles": ['never-any-role']
     }
   }
 
@@ -143,11 +149,11 @@ const createLocation = async (
   // as everywhere, these are dummies so far
   const secOpts = { // access is only via _admin
     admins: {
-      "names": ['no-admin'],
-      "roles": ['never_any_role']
+      "names": ['never-any-name'],
+      "roles": ['never-any-role']
     },
     members: {
-      "names": ['no-admin'],
+      "names": ['never-any-name'],
       "roles": ['users'] // only this allowed
     }
   }
@@ -296,12 +302,12 @@ const initializeIdentities = async (
 
   const secOpts = { // access is only via _admin
     admins: {
-      "names": ['no-admin'],
-      "roles": ['never_any_role']
+      "names": ['never-any-name'],
+      "roles": ['never-any-role']
     },
     members: {
-      "names": ['no-admin'],
-      "roles": ['never_any_role']
+      "names": ['never-any-name'],
+      "roles": ['never-any-role']
     }
   }
 
@@ -329,12 +335,12 @@ const initializePublic = async (
 
   const secOpts = { // for present, anyway, access is only via _admin
     admins: {
-      "names": ['no-admin'],
-      "roles": ['never_any_role']
+      "names": ['never-any-name'],
+      "roles": ['never-any-role']
     },
     members: {
-      "names": ['no-admin'],
-      "roles": ['never_any_role']
+      "names": ['never-any-name'],
+      "roles": ['never-any-role']
     }
   }
 
@@ -559,16 +565,28 @@ const safeHeader = (header:string|string[]|undefined):string => {
   return result
 }
 
-const setSuper = (admin:string, cmd:string, authHeaders:IAuthHeaders):string => {
+const supersPossible = (identity:string, cmd: string|null = null):string|null => {
   // *todo* allow this if on special list to come,
   // *todo* or if already an agent on the Location adding project
   // temp to try it - works nicely
-  if (admin === 'narreshen@gmail.com') {
-    console.log('setting super for: ' + admin + ', on: ' + cmd)
-    authHeaders['x-auth-couchdb-roles'] = '_admin'
+
+  if (identity === 'narreshen@gmail.com') {
+    return('_admin')
+  } else {
+    return null
+  }
+}
+
+const setSuper = (identity:string, cmd:string, authHeaders:IAuthHeaders):string => {
+
+  const added: string | null = supersPossible(identity, cmd)
+
+  if (added !== null) {
+    console.log('setting ' + added + ' for: ' + identity + ', on: ' + cmd)
+    authHeaders['x-auth-couchdb-roles'] = added
     return(<string>superAdmin)
   } else {
-    return admin
+    return identity
   }
 }
 
