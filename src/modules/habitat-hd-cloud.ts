@@ -198,19 +198,6 @@ const createLocation = async (
       step = 'create the locationdb'
       return initializeDb(locationDbPath, dbOpts, admin, secOpts, devOpts, authHeaders, req, res)
     })
-    // .then (result => {
-    //   if (!result.ok) { // this is a little redundant, but foretells other methods
-    //     throw result
-    //   }
-    //   step = 'open-locationdb'
-    //   return authedPouchDb(locationDbPath, authHeaders, {skip_setup: true})
-    // })
-    // .then(result => {
-    //   step = 'put-locationdb-data'
-    //   return result.put(locationData)
-    // })
-    // .then (result => {
-    //   console.log('location initialize: ' + JSON.stringify(result))
     .then (result => {
       console.log('location data put: ' + JSON.stringify(result))
       return res.send({ ok: true, msg: 'Ok, Location: ' + cmd.location
@@ -242,8 +229,6 @@ const createProject = async (
   const locationDb: string = cloudLocalDbUrl + '/' + cmd.location
   const dbOpts = {}
 
-  // *todo* complete filling in full information for actual project creation in _both_ dbs
-
   const initialData = {
     _id: cmd.project,
     metaData: { projectName: cmd.project },
@@ -251,7 +236,6 @@ const createProject = async (
     img: 'hex-encoded dummy image here'
   }
 
-  // console.log('createProject:authHeaders: ' + JSON.stringify(authHeaders))
   console.log('createProject: ' + cmd.project + ' locations: ' + cmd.location)
   step = 'open location'
   let db = authedPouchDb(identitiesDb, authHeaders, {skip_setup: true})
@@ -263,7 +247,7 @@ const createProject = async (
       return db.get(<string>cmd.location)
     })
     .then (locationData => {
-      // @ts-ignore -- *todo* this is just too much for TypeScript to handle???
+      // @ts-ignore -- *todo* the variable reality is just too much for TypeScript to handle?
       (<ILocationData>locationData).projects.push(cmd.project)
       step = 'project-into-identities-location'
       console.log('new location data: ' + JSON.stringify(locationData))
@@ -578,7 +562,7 @@ const safeHeader = (header:string|string[]|undefined):string => {
 const setSuper = (admin:string, cmd:string, authHeaders:IAuthHeaders):string => {
   // *todo* allow this if on special list to come,
   // *todo* or if already an agent on the Location adding project
-  // temp to try it
+  // temp to try it - works nicely
   if (admin === 'narreshen@gmail.com') {
     console.log('setting super for: ' + admin + ', on: ' + cmd)
     authHeaders['x-auth-couchdb-roles'] = '_admin'
