@@ -1,4 +1,6 @@
 import PouchDB from 'pouchdb'
+// PouchDB.plugin(require('pouchdb-upsert'))
+
 import Database = PouchDB.Database
 const fetch = require('node-fetch') // good _old_ Node, and dot=env
 const dotenv = require('dotenv')
@@ -19,10 +21,10 @@ const cloudLocalDbUrl:string|null = safeEnv(process.env.COUCHDBLOCALURL, 'http:/
 const superAdmin:string | null = safeEnv(process.env.SUPERADMIN, null)
 
 // *todo* starting here, lots of opportunity for refactoring out commons
-// if this looks a little strange, it's an identifiable way to get it from identity which we always produce,
-const getLoginIdentity = (identity: string, authHeaders: object, req: any, res: any) => {
+// if this looks a little strange, it's an identifiable way to get it from admin which we always produce,
+const getLoginIdentity = (admin: string, authHeaders: object, req: any, res: any) => {
 
-  const identityResult = { ok: true, identity: identity }
+  const identityResult = { ok: true, admin: admin }
 
   res.type('application/json')
   return res.send(identityResult)
@@ -95,22 +97,22 @@ const setMembership = async (
   cmd:Command,
   admin: string, authHeaders: object, req: any, res: any
 ) => {
-  const locationDbName: string = cloudLocalDbUrl + '/' + cmd.location
+  const locationDbPath: string = cloudLocalDbUrl + '/' + cmd.location
   const dbOpts = {}
 
   // *todo* actually read first, then modify...this is just a beginning sketch, goes out with the setSecurity refactor.
   const secOpts = { // *todo* for now, access is only via _admin
     admins: {
-      "names": ['no-identity'],
+      "names": ['no-admin'],
       "roles": ['never_any_role']
     },
     members: {
-      "names": ['no-identity'],
+      "names": ['no-admin'],
       "roles": ['never_any_role']
     }
   }
 
-  return setLocationSecurity(locationDbName, dbOpts, admin, secOpts, authHeaders, req, res)
+  return setLocationSecurity(locationDbPath, dbOpts, admin, secOpts, authHeaders, req, res)
 }
 
 // *todo* actually use setSecurity () for all such, when tested
@@ -119,7 +121,7 @@ const setLocationSecurity = async (
   admin: string, secOpts: object,
   authHeaders: object, req: any, res: any
 ) => {
-  const locationDbName: string = cloudLocalDbUrl + '/' + location
+  const locationDbPath: string = cloudLocalDbUrl + '/' + location
 
   // return Promise.reject ({ ok: false, msg: 'Setting security of locations not implemented yet'})
   return res.send ({ ok: false, msg: 'Setting security of locations not implemented yet'})
@@ -127,11 +129,13 @@ const setLocationSecurity = async (
 
 const createLocation = async (
   cmd:Command,
-  identity: string, authHeaders: object, req: any, res: any) => {
+  identity: string, authHeaders: IAuthHeaders, req: any, res: any) => {
 
-  const locationDbName: string = cloudLocalDbUrl + '/' + cmd.location
+  let step:string = 'begin'
+  const admin = setSuper(identity, 'createLocation', authHeaders)
+
+  const locationDbPath: string = cloudLocalDbUrl + '/' + cmd.location
   const dbOpts = {}
-  let errLoc = ''
 
   // *todo* we'll fill in the identities part first - this will need to be removed if we fail later,
   // though it will fail itself if  the problem is that the location already exists, so will account for most
@@ -139,11 +143,11 @@ const createLocation = async (
   // as everywhere, these are dummies so far
   const secOpts = { // access is only via _admin
     admins: {
-      "names": ['no-identity'],
+      "names": ['no-admin'],
       "roles": ['never_any_role']
     },
     members: {
-      "names": ['no-identity'],
+      "names": ['no-admin'],
       "roles": ['users'] // only this allowed
     }
   }
@@ -158,7 +162,7 @@ const createLocation = async (
         "map": "function (doc) {\n  if (doc)\n  emit(doc.name, 1);\n}"
       },
     },
-    "validate_doc_update": "function(newDoc, oldDoc, userCtx, secObj){ if ('_admin' in userCtx.roles === false && doc._id.substr(0, 7) === '_design') { throw ({ unauthorized: 'you must be a server admin to alter design documents'}) }}",
+    "validate_doc_update": "function(newDoc, oldDoc, userCtx, secObj){ if ('_admin' in userCtx.roles === false && newDoc._id.substr(0, 7) === '_design') { throw ({ unauthorized: 'you must be a server admin to alter design documents'}) }}",
     "filters": {
       "onlyTheLonely": "function(doc) { return doc._id.substr(0, 7) !== '_design'; }"
     }
@@ -166,41 +170,54 @@ const createLocation = async (
 
   const locationData = {
     _id: cmd.location,
+    projects: [],
     agents: [
-      identity // creator is first agent; can go, *todo* but never allow less than one agent when we get to deletes
+      identity // creator is first agent; can go, *todo* but never? allow less than one agent when we get to deletes?
     ]
   }
 
-  // safely get the identity db if it's there; might not have been initialized
+  // safely get the admin db if it's there; might not have been initialized
   const identitiesDbPath = cloudLocalDbUrl + '/habitat-identities'
 
+  step = 'open identities'
   const identitiesDb = authedPouchDb(identitiesDbPath, authHeaders, { skip_setup: true })
   await identitiesDb.info()
     .then (result => {
       console.log ('createLocation:identitydb:status: ' + JSON.stringify(result))
+      step = 'put initial data'
       return identitiesDb.put(locationData) // upsertProjectToDatabase(location, project, data, db)
     })
     .then(result => {
       console.log ('createLocation:identitiesdb:put ' + JSON.stringify(result))
       if (!result.ok) { // errors won't throw of themselves, thus we test
-        errLoc = 'identitiesDb:put'
         throw (result)
       }
-      console.log('created identity for: ' + cmd.location + '/' + cmd.project)
+      console.log('created admin for: ' + cmd.location + '/' + cmd.project)
     })
     .then (() => {
-      return initializeDb(locationDbName, dbOpts, identity, secOpts, devOpts, authHeaders, req, res)
+      step = 'create the locationdb'
+      return initializeDb(locationDbPath, dbOpts, admin, secOpts, devOpts, authHeaders, req, res)
     })
+    // .then (result => {
+    //   if (!result.ok) { // this is a little redundant, but foretells other methods
+    //     throw result
+    //   }
+    //   step = 'open-locationdb'
+    //   return authedPouchDb(locationDbPath, authHeaders, {skip_setup: true})
+    // })
+    // .then(result => {
+    //   step = 'put-locationdb-data'
+    //   return result.put(locationData)
+    // })
+    // .then (result => {
+    //   console.log('location initialize: ' + JSON.stringify(result))
     .then (result => {
-      if (!result.ok) { // this is a little redundant, but foretells other methods
-        errLoc = 'initializeDb'
-        throw result
-      }
+      console.log('location data put: ' + JSON.stringify(result))
       return res.send({ ok: true, msg: 'Ok, Location: ' + cmd.location
-          + ' created, linked with first identity into Identities...'})
+          + ' created, linked with first admin into Identities...'})
     })
     .catch (err => {
-      const formatted = pouchError('createLocation:add-identity', err)
+      const formatted = pouchError('createLocation:add-admin', step, err)
       console.log(formatted)
       let errResult = {}
       if ((<PouchErr>err).status === 409) {
@@ -208,16 +225,21 @@ const createLocation = async (
       } else {
         errResult = formatted
       }
-      console.log('createLocation:' + errLoc + ':error: ' + JSON.stringify(errResult))
+      console.log(formatted + ':error: ' + JSON.stringify(errResult))
       return res.send(JSON.stringify(errResult))
     })
 }
 
 const createProject = async (
   cmd:Command,
-  admin: string, authHeaders: object, req: any, res: any
+  admin: string, authHeaders: IAuthHeaders, req: any, res: any
 ) => {
-  const targetDbName: string = cloudLocalDbUrl + '/' + cmd.location
+
+  let step:string = 'begin'
+  setSuper(admin, 'createProject', authHeaders)
+
+  const identitiesDb: string = cloudLocalDbUrl + '/habitat-identities'
+  const locationDb: string = cloudLocalDbUrl + '/' + cmd.location
   const dbOpts = {}
 
   // *todo* complete filling in full information for actual project creation in _both_ dbs
@@ -229,17 +251,36 @@ const createProject = async (
     img: 'hex-encoded dummy image here'
   }
 
-  console.log('createProject:authHeaders: ' + JSON.stringify(authHeaders))
-  const db = authedPouchDb(targetDbName, authHeaders, { skip_setup: true })
+  // console.log('createProject:authHeaders: ' + JSON.stringify(authHeaders))
+  console.log('createProject: ' + cmd.project + ' locations: ' + cmd.location)
+  step = 'open location'
+  let db = authedPouchDb(identitiesDb, authHeaders, {skip_setup: true})
   const createResult = await db.info()
     .then (result => {
-      console.log ('createProject:status: ' + JSON.stringify(result))
-      return db.put(initialData) // upsertProjectToDatabase(location, project, data, db)
+      console.log('createProject:identities:status: ' + JSON.stringify(result))
+      step = 'initial opening identities'
+      console.log('get identities data for location: ' + cmd.location)
+      return db.get(<string>cmd.location)
+    })
+    .then (locationData => {
+      // @ts-ignore -- *todo* this is just too much for TypeScript to handle???
+      (<ILocationData>locationData).projects.push(cmd.project)
+      step = 'project-into-identities-location'
+      console.log('new location data: ' + JSON.stringify(locationData))
+      return db.put(locationData) // upsertProjectToDatabase(location, project, data, db)
     })
     .then (result => {
-      console.log('createProject: if ok, write project into location.')
-      // *todo* here write the project into the location in Locations
-      return result
+      console.log('createProject:identities::put location ' + JSON.stringify(result))
+      // *todo* here write the project agentry into Identities
+      step = 'open-location-db-status'
+      db = authedPouchDb(locationDb, authHeaders, {skip_setup: true})
+      return db.info()
+    })
+    .then (result => {
+      console.log ('locationDb status: ' + JSON.stringify(result))
+      step = 'put project into location'
+      console.log('initialData: ' + JSON.stringify(initialData))
+      return db.put(initialData)
     })
     .then(result => {
       console.log ('createProject:put ' + JSON.stringify(result))
@@ -249,7 +290,7 @@ const createProject = async (
       return { ok: true, msg: 'Success - created Project: ' + cmd.location + '/' + cmd.project }
     })
     .catch (err => {
-      const formatted = pouchError('createProject', err)
+      const formatted = pouchError('createProject', step, err)
       console.log(formatted)
       if ((<PouchErr>err).status === 409) {
         // at this point, that would be the reason
@@ -271,11 +312,11 @@ const initializeIdentities = async (
 
   const secOpts = { // access is only via _admin
     admins: {
-      "names": ['no-identity'],
+      "names": ['no-admin'],
       "roles": ['never_any_role']
     },
     members: {
-      "names": ['no-identity'],
+      "names": ['no-admin'],
       "roles": ['never_any_role']
     }
   }
@@ -304,11 +345,11 @@ const initializePublic = async (
 
   const secOpts = { // for present, anyway, access is only via _admin
     admins: {
-      "names": ['no-identity'],
+      "names": ['no-admin'],
       "roles": ['never_any_role']
     },
     members: {
-      "names": ['no-identity'],
+      "names": ['no-admin'],
       "roles": ['never_any_role']
     }
   }
@@ -493,25 +534,58 @@ const setDesignDocs = async (targetDbName:string, devOpts:object, authHeaders:ob
 
 
 // translate pouch's several forms possible into our expected form
-const pouchError = (activity:string, err:PouchErr):PouchErr => {
-  console.log(activity + ':error: ' + JSON.stringify(err))
+const pouchError = (activity:string, step:string, err:PouchErr):PouchErr => {
+  const label:string = activity + ':' + step + ':'
+  console.log(label + ':error: ' + JSON.stringify(err))
   let error = err
   if (err.error) {
     if (err.reason) {
       error = {
         ok: false,
-        msg: 'error: ' + err.error + ', reason: ' + err.reason
+        msg: label + 'error: ' + err.error + ', reason: ' + err.reason
       }
     }
     else if (err.status) {
       error = {
         ok: false,
-        msg: 'status: '+ err.status + ', name: ' + err.name +
+        msg: label + 'status: '+ err.status + ', name: ' + err.name +
           ', error: ' + err.error + ', message: ' + err.message
       }
     }
   }
   return error
+}
+
+// I ask you. Typescript.
+const safeHeader = (header:string|string[]|undefined):string => {
+  let result:string = ''
+  switch (typeof header) {
+    case 'undefined':
+      result = 'undefined'
+      break
+    case 'object':  // and this is really nutso
+      result = 'not string'
+      break
+    case 'string':
+    default:
+      result = header
+      break
+  }
+
+  return result
+}
+
+const setSuper = (admin:string, cmd:string, authHeaders:IAuthHeaders):string => {
+  // *todo* allow this if on special list to come,
+  // *todo* or if already an agent on the Location adding project
+  // temp to try it
+  if (admin === 'narreshen@gmail.com') {
+    console.log('setting super for: ' + admin + ', on: ' + cmd)
+    authHeaders['x-auth-couchdb-roles'] = '_admin'
+    return(<string>superAdmin)
+  } else {
+    return admin
+  }
 }
 
 export {
@@ -522,5 +596,6 @@ export {
   setMembership,
   setSecurity,
   setDesignDocs,
-  getLoginIdentity
+  getLoginIdentity,
+  safeHeader,
 }
