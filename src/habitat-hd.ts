@@ -2,6 +2,7 @@ import express = require ('express')
 // import * as express from 'express';
 import helmet = require('helmet')
 import session = require('express-session')
+import rateLimit = require("express-rate-limit")
 import crypto from 'crypto'
 // *todo* also this - do we have use for the extra three? leave the ide warning in commit to remindnp
 import { createProxyMiddleware/*, Filter, Options, RequestHandler*/ } from 'http-proxy-middleware';
@@ -36,7 +37,18 @@ app.use(session({
   name: 'sessionId'
 }))
 
-// *todo* likely should add rate-limiter-flexible here, as above, requires redis
+// *todo* possibly should upgrade to rate-limiter-flexible here, as above, requires redis
+// however, it may be enough to use this one, at least until there might be a cluster
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10000 // limit each IP to 100 requests per windowMs - but had to up, w/fauxton load
+});
+
+//  apply to all requests
+app.use(limiter);
+
+// security in place, let's serve and proxy...
 
 const listenPort:number = 5983 // distinguish from 5984 so we can talk to it...
 let proxyDestination:string = 'http://localhost:5984'
