@@ -9,7 +9,7 @@ User=www-data
 Group=www-data
 StandardOutput=journal+console
 StandardError=inherit
-ExecStart=/usr/bin/node /var/www/hd/dist/habitat-hd
+ExecStart=/usr/bin/node /home/mediadocker/habitat-hd/dist/habitat-hd
 Restart=on-failure
 LimitNOFILE=65536
 

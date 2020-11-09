@@ -39,7 +39,7 @@ Brief first entries to remind...
 - See that services work
 - see that unknown access fails for anything but database search
 - see that appropriate authenticated users get the proper privileges and not others
-- *only* when you are confident all operate securely, then `sudo systemctl enable oauth2-proxy habitat-had couchdb`
+- *only* when you are confident all operate securely, then `sudo systemctl enable oauth2-proxy habitat-hd couchdb`
 
 ## Backups!
  - back up our work now

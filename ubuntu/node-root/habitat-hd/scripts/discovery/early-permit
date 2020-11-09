@@ -1,0 +1,17 @@
+curl -u admin:4redwood -X PUT $db/monkeys/_security -d @- << EOF
+{
+    "admins": {
+        "names": [],
+        "roles": []
+    },
+    "members": {
+        "names": ["hardlab-gm"],
+        "roles": []
+    }
+}
+EOF
+
+ curl localhost:5984/monkeys/_all_docs  -u admin:4redwood
+
+ curl $dbs/hardocs-projects/_all_docs?include_docs=true
+
