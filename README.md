@@ -13,6 +13,9 @@ Brief first entries to remind...
 - create /opt/oauth2-proxy vi Go
 - build the Go executable
 - copy oauth2-proxy from it into this folder chmod 755
+- sftp ubuntu to home dir (*todo* unify/reorder so this is first)
+- cp oauth2-proxy.service to /etc/systemd/system
+- sudo systemctl daemon-reload to use the service
 
 ## install CouchDB and Node
 - sudo apt install couchdb node
@@ -23,16 +26,28 @@ Brief first entries to remind...
 - set appropriate ownership and permissions
 
 ## CouchDB admin setup
-- replace admin in /opt/couchdb/local.ini with
+- replace admin in /opt/couchdb/local.ini with 
+  *todo* explain about this
+- sudo systemctl daemon-reload to use the service
+
+## habitat-hd setup
+- make a login for the this service
+- mkdir habitat-hd in the home directory
+- sftp up src scripts types package.json from here
+- cd ~/habitat-hd
+- npm install
+- npm run build
+- you have already ~/ubuntu/etc/systemd/system; sudo cp habitat-hd.service /etc/systemd/system
+- sudo systemctl daemon-reload to use the service
 
 ## enable the systemd services
 - n.b. couchdb has installed it's own service file in /lib/systemd/system, properly as vendor
 - enable the systemd services by running  `sudo systemd daemon-reload`
-- start the services via `sudo systemd start oauth2-proxy habitat-had couchdb`
-- verify the services via `sudo systemd status oauth2-proxy habitat-had couchdb`
-- stop the services, until later testing: `sudo systemctl stop oauth2-proxy habitat-had couchdb`
-- verify the services are stopped now, via `sudo systemd status oauth2-proxy habitat-had couchdb`
-- ensure the services don't autostart until all tests are done, via `sudo systemctl disable oauth2-proxy habitat-had couchdb`
+- start the services via `sudo systemd start oauth2-proxy habitat-hd couchdb`
+- verify the services via `sudo systemd status oauth2-proxy habitat-hd couchdb`
+- stop the services, until later testing: `sudo systemctl stop oauth2-proxy habitat-hd couchdb`
+- verify the services are stopped now, via `sudo systemd status oauth2-proxy habitat-hd couchdb`
+- ensure the services don't autostart until all tests are done, via `sudo systemctl disable oauth2-proxy habitat-hd couchdb`
 
 ## arrange for automatic service start on boot
 - first, test everything. 
