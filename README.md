@@ -4,13 +4,13 @@
 
 # Status
 
-This is a record of the fully operating Habitat installation on the present discovery and development server, as of 29 November 2020.
+This repository is a record of the fully operating Habitat installation on the present discovery and development server, as of 29 November 2020.
 
 The installation is fully functional to its stage of implementation of the current design, and demonstrates primary Hardocs cloud operations, always with full security and with a good degree of administrative control present, matched to its abilities.
 
 There are a few further control and abilities features yet to be implemented, in the appropriate server functions and in their Habitat client-side api, according to current design. These will become present before long.
 
-The notes below are not exactly installation instructions, and are not complete, if they outline enough for experienced developmental rebuilding of a discovery and proof server. This document will be improved along with the filling out of current design functions.
+The notes below are not exactly installation instructions, and are not complete, if they outline enough for experienced developmental rebuilding of a discovery and proof server. This document will be improved along these lines with the filling out of current design functions.
 
 ## Ubuntu installation
 
