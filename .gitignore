@@ -1,4 +1,7 @@
 .idea/
-package-lock.json
 node_modules/
-build/
+ubuntu/var/www/hd/dist/
+
+.env
+package-lock.json
+yarn.lock

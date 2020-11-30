@@ -1,0 +1,1 @@
+The built oauth2-proxy executable goes here, chmod 755

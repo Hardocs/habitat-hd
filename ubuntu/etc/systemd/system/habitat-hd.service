@@ -1,0 +1,17 @@
+[Unit]
+Description=Habitat Hardocs Service
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+RuntimeDirectory=/var/www/hd/dist
+User=www-data
+Group=www-data
+StandardOutput=journal+console
+StandardError=inherit
+ExecStart=/usr/bin/node /home/mediadocker/habitat-hd/dist/habitat-hd
+Restart=on-failure
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
