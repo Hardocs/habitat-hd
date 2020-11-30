@@ -2,9 +2,19 @@
 ---
 # Habitat HD - Habitat services for Hardocs
 
-Brief first entries to remind...
+# Status
+
+This is a record of the fully operating Habitat installation on the present discovery and development server, as of 29 November 2020.
+
+The installation is fully functional to its stage of implementation of the current design, and demonstrates primary Hardocs cloud operations, always with full security and with a good degree of administrative control present, matched to its abilities.
+
+There are a few further control and abilities features yet to be implemented, in the appropriate server functions and in their Habitat client-side api, according to current design. These will become present before long.
+
+The notes below are not exactly installation instructions, and are not complete, if they outline enough for experienced developmental rebuilding of a discovery and proof server. This document will be improved along with the filling out of current design functions.
 
 ## Ubuntu installation
+
+Brief first entries to remind...
 
 - create a DigitalOcean droplet of size [ *todo* - apropos]
 - create a secure sudo user on the droplet
@@ -26,7 +36,7 @@ Brief first entries to remind...
 - set appropriate ownership and permissions
 
 ## CouchDB admin setup
-- replace admin in /opt/couchdb/local.ini with 
+- replace admin in /opt/couchdb/local.ini with
   *todo* explain about this
 - sudo systemctl daemon-reload to use the service
 
@@ -50,7 +60,7 @@ Brief first entries to remind...
 - ensure the services don't autostart until all tests are done, via `sudo systemctl disable oauth2-proxy habitat-hd couchdb`
 
 ## arrange for automatic service start on boot
-- first, test everything. 
+- first, test everything.
 - See that services work
 - see that unknown access fails for anything but database search
 - see that appropriate authenticated users get the proper privileges and not others
@@ -58,14 +68,14 @@ Brief first entries to remind...
 
 ## Backups!
  - back up our work now
- - set up regular automated backups for all installed files, and the database in 
+ - set up regular automated backups for all installed files, and the database in
 
 Juat as in the ubuntu folder here
 
 ## Operations
 
 ### logging
-actively monitor logs: 
+actively monitor logs:
 - sudo journalctl -u habitat-hd -f
 - sudo journalctl -u oauth2-proxy -f
 - sudo journalctl -u couchdb -f
